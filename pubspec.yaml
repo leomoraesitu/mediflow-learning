@@ -5,4 +5,5 @@ environment:
   sdk: ^3.13.1
 
 workspace:
+  - apps/mobile
   - packages/checkout_domain
