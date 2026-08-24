@@ -1,0 +1,8 @@
+name: mediflow_learning
+publish_to: none
+
+environment:
+  sdk: ^3.13.1
+
+workspace:
+  - packages/checkout_domain

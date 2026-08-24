@@ -1,0 +1,10 @@
+# Dart and Flutter
+.dart_tool/
+build/
+coverage/
+
+# Editors and operating system
+.idea/
+.vscode/
+*.iml
+.DS_Store
