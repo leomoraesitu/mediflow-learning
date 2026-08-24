@@ -44,18 +44,22 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 7, a infraestrutura inicial do monorepo e o primeiro aplicativo Flutter foram criados:
+Até a Aula 8, a infraestrutura inicial do monorepo e a primeira interação com estado local foram criadas:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
 - Pub Workspace configurado para o aplicativo mobile e o package de domínio;
 - fronteira de dependências do domínio protegida por testes;
-- resolução e lockfile compartilhados na raiz.
+- resolução e lockfile compartilhados na raiz;
 - scaffold Flutter Android criado em `apps/mobile`;
 - primeira árvore de widgets executada e validada em um emulador Android;
+- `PharmacyModePage` implementada como `StatefulWidget`, com o contador mantido em seu objeto `State`;
+- apresentação extraída para o `StatelessWidget` `MedicationCounterContent`;
+- fluxo de dados unidirecional exercitado com `count` descendo para o filho e `onScan` retornando como callback;
+- reconstruções e métodos `initState`, `build` e `dispose` instrumentados com logs;
 - hot reload e hot restart verificados durante o desenvolvimento.
 
-O aplicativo exibe a interface inicial “MediFlow em construção”. Os fluxos de negócio do MediFlow ainda não foram implementados.
+O aplicativo exibe o “Modo Farmácia”, permite simular leituras de medicamentos e atualiza um contador local. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
 
 ## Limites do projeto
 
@@ -70,7 +74,7 @@ Na raiz do repositório, execute:
 
 ```bash
 dart format --output=none --set-exit-if-changed .
-flutter analyze
+flutter analyze apps/mobile
 dart pub workspace list
 
 cd packages/checkout_domain
