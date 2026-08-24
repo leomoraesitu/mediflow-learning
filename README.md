@@ -28,7 +28,7 @@ mediflow-learning/
 
 | Diretório | Responsabilidade |
 | --- | --- |
-| `apps/mobile` | Aplicativo Flutter Android e fluxo principal do Modo Farmácia. Será criado na Aula 7. |
+| `apps/mobile` | Aplicativo Flutter Android e futuro fluxo principal do Modo Farmácia. |
 | `apps/ops_web` | Painel operacional Flutter Web somente leitura. Será criado na Aula 36. |
 | `packages/checkout_domain` | Modelos, regras e transições do checkout em Dart puro, compartilháveis entre os clientes. |
 | `functions` | Backend sintético e contratos REST. Possui ciclo de ferramentas próprio e não participa do Pub Workspace. |
@@ -38,21 +38,24 @@ mediflow-learning/
 
 O monorepo usa [Pub Workspaces](https://dart.dev/tools/pub/workspaces) para manter uma única resolução compartilhada de dependências, um único `pubspec.lock` na raiz e um único `package_config.json` gerado em `.dart_tool`.
 
-Neste momento, `packages/checkout_domain` é o único membro do workspace. Cada novo aplicativo Dart ou Flutter será incluído explicitamente quando for criado e deverá declarar `resolution: workspace` em seu próprio `pubspec.yaml`.
+Neste momento, `apps/mobile` e `packages/checkout_domain` participam do workspace. Cada novo aplicativo Dart ou Flutter será incluído explicitamente quando for criado e deverá declarar `resolution: workspace` em seu próprio `pubspec.yaml`.
 
 O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio e Drift. Essa fronteira permite testar as regras do checkout rapidamente e reutilizá-las em mais de um cliente, seguindo a separação de responsabilidades discutida no [guia oficial de arquitetura do Flutter](https://docs.flutter.dev/app-architecture/guide).
 
 ## Estado atual
 
-A infraestrutura inicial do monorepo foi criada na Aula 6:
+Até a Aula 7, a infraestrutura inicial do monorepo e o primeiro aplicativo Flutter foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
-- Pub Workspace configurado para o package de domínio;
+- Pub Workspace configurado para o aplicativo mobile e o package de domínio;
 - fronteira de dependências do domínio protegida por testes;
 - resolução e lockfile compartilhados na raiz.
+- scaffold Flutter Android criado em `apps/mobile`;
+- primeira árvore de widgets executada e validada em um emulador Android;
+- hot reload e hot restart verificados durante o desenvolvimento.
 
-Ainda não existe interface Flutter nem fluxo funcional do MediFlow. O primeiro aplicativo será criado na Aula 7.
+O aplicativo exibe a interface inicial “MediFlow em construção”. Os fluxos de negócio do MediFlow ainda não foram implementados.
 
 ## Limites do projeto
 
@@ -67,7 +70,7 @@ Na raiz do repositório, execute:
 
 ```bash
 dart format --output=none --set-exit-if-changed .
-dart analyze
+flutter analyze
 dart pub workspace list
 
 cd packages/checkout_domain
