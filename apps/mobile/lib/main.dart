@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mediflow_mobile/design_system/app_spacing.dart';
+import 'package:mediflow_mobile/design_system/app_theme.dart';
+import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
 
 void main() {
   runApp(const MainApp());
@@ -9,7 +12,7 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: PharmacyModePage());
+    return MaterialApp(home: const PharmacyModePage(), theme: AppTheme.light);
   }
 }
 
@@ -45,9 +48,11 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Modo Farmácia')),
-      body: MedicationCounterContent(
-        count: _scannedMedicationCount,
-        onScan: _scanMedication,
+      body: SafeArea(
+        child: MedicationCounterContent(
+          count: _scannedMedicationCount,
+          onScan: _scanMedication,
+        ),
       ),
     );
   }
@@ -72,18 +77,36 @@ class MedicationCounterContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('MedicationCounterContent: build — $count');
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     final medicationLabel = switch (count) {
       0 => 'Nenhum medicamento lido',
       1 => '1 medicamento lido',
       _ => '$count medicamentos lidos',
     };
-    return Center(
+    return MediFlowContentCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(medicationLabel),
-          const SizedBox(height: 16),
+          Icon(Icons.medication_outlined, size: 48, color: colorScheme.primary),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Leitura de medicamentos',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Simule a leitura para acompanhar os itens desta compra.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(medicationLabel, style: theme.textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.md),
           ElevatedButton(
             onPressed: onScan,
             child: const Text('Simular leitura'),
