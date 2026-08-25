@@ -4,7 +4,7 @@ Aplicativo Flutter Android principal do MediFlow Learning.
 
 ## Estado atual
 
-Na Aula 9, a aplicação passou a apresentar o “Modo Farmácia” com uma identidade visual própria e responsiva. O botão “Simular leitura” continua incrementando a quantidade de medicamentos lidos e atualizando a mensagem exibida na tela.
+Até a Aula 10, a aplicação passou a apresentar o “Modo Farmácia” com uma identidade visual própria, responsiva e preparada para os primeiros requisitos de acessibilidade. O botão “Simular leitura” continua incrementando a quantidade de medicamentos lidos e atualizando a mensagem exibida na tela.
 
 A composição atual separa estado, apresentação e design system:
 
@@ -18,7 +18,15 @@ A composição atual separa estado, apresentação e design system:
 
 O pai mantém o estado, envia o valor para o filho e recebe a interação por callback. Os widgets visuais recuperam cores e tipografia do tema mais próximo com `Theme.of(context)`, sem depender diretamente de valores de marca espalhados pela interface.
 
-O conteúdo ocupa a largura disponível até o limite de 480 pixels lógicos. `SafeArea` respeita recortes e áreas de navegação do dispositivo, enquanto `SingleChildScrollView` oferece uma saída para alturas reduzidas. O comportamento foi validado em retrato e paisagem sem overflow.
+O conteúdo ocupa a largura disponível até o limite de 480 pixels lógicos. `SafeArea` respeita recortes e áreas de navegação do dispositivo, enquanto `SingleChildScrollView` oferece uma saída para alturas reduzidas. O comportamento foi validado em retrato e paisagem, inclusive com a fonte ampliada, sem overflow e com o contador e o botão alcançáveis.
+
+Na camada de acessibilidade:
+
+- o contador usa `Semantics` com rótulo estável, valor dinâmico e `liveRegion` para anunciar mudanças;
+- `ExcludeSemantics` impede que o texto visual do contador seja anunciado em duplicidade;
+- o tema define 48 por 48 pixels lógicos como tamanho mínimo dos botões elevados;
+- o teste `accessibility_guidelines_test.dart` verifica alvo de toque Android, rótulos dos controles e contraste textual;
+- as verificações automatizadas complementam os testes manuais com tecnologias assistivas, sem substituí-los.
 
 Os logs de `initState`, `build` e `dispose` permitem observar o ciclo de vida durante o aprendizado. O hot reload preserva o objeto `State`, enquanto o hot restart recria a aplicação e reinicia o contador.
 
@@ -36,16 +44,20 @@ flutter run -d <device-id>
 
 ## Validação
 
-Na raiz do repositório, execute:
+Entre no diretório do aplicativo e execute:
 
 ```bash
-dart format --output=none --set-exit-if-changed apps/mobile/lib
-flutter analyze apps/mobile
+cd apps/mobile
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+
+cd ../..
 git diff --check
 git status --short
 ```
 
-Os testes de widgets do aplicativo serão introduzidos em uma aula futura. O Quality Gate atual também executa os testes de fronteira do package `checkout_domain`.
+O resultado esperado é formatação limpa, análise estática sem problemas, testes de acessibilidade aprovados e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
 
 ## Referências oficiais
 
@@ -58,3 +70,7 @@ Os testes de widgets do aplicativo serão introduzidos em uma aula futura. O Qua
 - [Abordagem geral para aplicativos adaptáveis](https://docs.flutter.dev/ui/adaptive-responsive/general)
 - [`SafeArea`](https://api.flutter.dev/flutter/widgets/SafeArea-class.html)
 - [`SingleChildScrollView`](https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html)
+- [Acessibilidade no Flutter](https://docs.flutter.dev/ui/accessibility)
+- [Testes de acessibilidade](https://docs.flutter.dev/ui/accessibility/accessibility-testing)
+- [`Semantics`](https://api.flutter.dev/flutter/widgets/Semantics-class.html)
+- [`ExcludeSemantics`](https://api.flutter.dev/flutter/widgets/ExcludeSemantics-class.html)

@@ -11,6 +11,12 @@ final class AppTheme {
       brightness: Brightness.light,
     );
 
-    return ThemeData(colorScheme: colorScheme, useMaterial3: true);
+    return ThemeData(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(minimumSize: const Size(48, 48)),
+      ),
+    );
   }
 }

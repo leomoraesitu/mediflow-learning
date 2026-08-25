@@ -105,7 +105,15 @@ class MedicationCounterContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(medicationLabel, style: theme.textTheme.titleMedium),
+          Semantics(
+            container: true,
+            liveRegion: true,
+            label: 'Quantidade de medicamentos lidos',
+            value: '$count',
+            child: ExcludeSemantics(
+              child: Text(medicationLabel, style: theme.textTheme.titleMedium),
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           ElevatedButton(
             onPressed: onScan,
