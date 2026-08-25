@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 8, a infraestrutura inicial do monorepo e a primeira interação com estado local foram criadas:
+Até a Aula 9, a infraestrutura inicial do monorepo, a primeira interação com estado local e a base visual do aplicativo foram criadas:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -58,8 +58,15 @@ Até a Aula 8, a infraestrutura inicial do monorepo e a primeira interação com
 - fluxo de dados unidirecional exercitado com `count` descendo para o filho e `onScan` retornando como callback;
 - reconstruções e métodos `initState`, `build` e `dispose` instrumentados com logs;
 - hot reload e hot restart verificados durante o desenvolvimento.
+- tema Material 3 centralizado em `AppTheme`, com um `ColorScheme` derivado da cor-base própria do MediFlow;
+- cores e estilos tipográficos consumidos pela árvore por meio de `Theme.of(context)`;
+- escala de espaçamento definida em `AppSpacing`, evitando valores de layout dispersos;
+- componente reutilizável `MediFlowContentCard` criado para padronizar margem, padding e apresentação;
+- largura do conteúdo limitada a 480 pixels lógicos, preservando o aproveitamento de telas estreitas e evitando expansão excessiva em telas largas;
+- rolagem vertical de segurança e respeito às áreas ocupadas por recortes, barras e gestos do sistema;
+- layout validado no emulador Android nas orientações retrato e paisagem, sem overflow.
 
-O aplicativo exibe o “Modo Farmácia”, permite simular leituras de medicamentos e atualiza um contador local. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
+O aplicativo exibe o “Modo Farmácia”, permite simular leituras de medicamentos e atualiza um contador local em uma interface responsiva com identidade própria. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
 
 ## Limites do projeto
 
@@ -94,3 +101,7 @@ O resultado esperado é análise estática sem problemas, os testes do package a
 - [Pub.dev](https://pub.dev/)
 - [Pub Workspaces](https://dart.dev/tools/pub/workspaces)
 - [Guia de arquitetura do Flutter](https://docs.flutter.dev/app-architecture/guide)
+- [Temas no Flutter](https://docs.flutter.dev/cookbook/design/themes)
+- [Entendendo constraints](https://docs.flutter.dev/ui/layout/constraints)
+- [Abordagem geral para aplicativos adaptáveis](https://docs.flutter.dev/ui/adaptive-responsive/general)
+- [`SafeArea`](https://api.flutter.dev/flutter/widgets/SafeArea-class.html)
