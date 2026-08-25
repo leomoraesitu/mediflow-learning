@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 9, a infraestrutura inicial do monorepo, a primeira interação com estado local e a base visual do aplicativo foram criadas:
+Até a Aula 10, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual e os primeiros requisitos de acessibilidade do aplicativo foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -64,7 +64,12 @@ Até a Aula 9, a infraestrutura inicial do monorepo, a primeira interação com 
 - componente reutilizável `MediFlowContentCard` criado para padronizar margem, padding e apresentação;
 - largura do conteúdo limitada a 480 pixels lógicos, preservando o aproveitamento de telas estreitas e evitando expansão excessiva em telas largas;
 - rolagem vertical de segurança e respeito às áreas ocupadas por recortes, barras e gestos do sistema;
-- layout validado no emulador Android nas orientações retrato e paisagem, sem overflow.
+- layout validado no emulador Android nas orientações retrato e paisagem, sem overflow;
+- contador exposto às tecnologias assistivas com rótulo estável, valor dinâmico e anúncio de mudanças por meio de `Semantics`;
+- semântica visual duplicada removida do contador com `ExcludeSemantics`;
+- alvo mínimo de 48 por 48 pixels lógicos aplicado globalmente aos botões elevados;
+- interface validada manualmente com fonte ampliada em retrato e paisagem, mantendo conteúdo, contador e botão alcançáveis;
+- teste de widget verificando alvo de toque Android, rótulos dos controles e contraste textual com a Accessibility Guideline API do Flutter.
 
 O aplicativo exibe o “Modo Farmácia”, permite simular leituras de medicamentos e atualiza um contador local em uma interface responsiva com identidade própria. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
 
@@ -84,6 +89,10 @@ dart format --output=none --set-exit-if-changed .
 flutter analyze apps/mobile
 dart pub workspace list
 
+cd apps/mobile
+flutter test
+cd ../..
+
 cd packages/checkout_domain
 dart test
 cd ../..
@@ -92,7 +101,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes do package aprovados e apenas alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes do aplicativo e do package aprovados e apenas alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -105,3 +114,7 @@ O resultado esperado é análise estática sem problemas, os testes do package a
 - [Entendendo constraints](https://docs.flutter.dev/ui/layout/constraints)
 - [Abordagem geral para aplicativos adaptáveis](https://docs.flutter.dev/ui/adaptive-responsive/general)
 - [`SafeArea`](https://api.flutter.dev/flutter/widgets/SafeArea-class.html)
+- [Acessibilidade no Flutter](https://docs.flutter.dev/ui/accessibility)
+- [Testes de acessibilidade](https://docs.flutter.dev/ui/accessibility/accessibility-testing)
+- [`Semantics`](https://api.flutter.dev/flutter/widgets/Semantics-class.html)
+- [`ExcludeSemantics`](https://api.flutter.dev/flutter/widgets/ExcludeSemantics-class.html)
