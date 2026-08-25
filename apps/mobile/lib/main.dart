@@ -12,7 +12,82 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: const PharmacyModePage(), theme: AppTheme.light);
+    return MaterialApp(
+      home: const BenefitsHomePage(availableBalance: 250.0),
+      theme: AppTheme.light,
+    );
+  }
+}
+
+class BenefitsHomePage extends StatelessWidget {
+  const BenefitsHomePage({required this.availableBalance, super.key});
+
+  final double availableBalance;
+
+  void _openPharmacyMode(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return const PharmacyModePage();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final formattedBalance = availableBalance
+        .toStringAsFixed(2)
+        .replaceFirst('.', ',');
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('MediFlow')),
+      body: SafeArea(
+        child: MediFlowContentCard(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 48,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Saldo disponível',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'R\$ $formattedBalance',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Benefício fictício para esta demonstração.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ElevatedButton(
+                onPressed: () {
+                  _openPharmacyMode(context);
+                },
+                child: const Text('Iniciar Modo Farmácia'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -49,9 +124,24 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Modo Farmácia')),
       body: SafeArea(
-        child: MedicationCounterContent(
-          count: _scannedMedicationCount,
-          onScan: _scanMedication,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: const CheckoutProgressIndicator(
+                currentStep: 1,
+                totalSteps: 4,
+                label: 'Leitura do medicamento',
+              ),
+            ),
+            Expanded(
+              child: MedicationCounterContent(
+                count: _scannedMedicationCount,
+                onScan: _scanMedication,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -120,6 +210,58 @@ class MedicationCounterContent extends StatelessWidget {
             child: const Text('Simular leitura'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CheckoutProgressIndicator extends StatelessWidget {
+  const CheckoutProgressIndicator({
+    required this.currentStep,
+    required this.totalSteps,
+    required this.label,
+    super.key,
+  });
+
+  final int currentStep;
+  final int totalSteps;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = currentStep / totalSteps;
+
+    return Semantics(
+      container: true,
+      label: 'Progresso do checkout',
+      value: 'Etapa $currentStep de $totalSteps: $label',
+      child: ExcludeSemantics(
+        child: Column(
+          children: [
+            Wrap(
+              children: [
+                for (var i = 1; i <= totalSteps; i++)
+                  Icon(
+                    i <= currentStep
+                        ? Icons.check_circle
+                        : Icons.circle_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                Text(
+                  'Etapa $currentStep de $totalSteps: $label',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall,
+                ),
+              ],
+            ),
+            SizedBox(height: AppSpacing.sm),
+            LinearProgressIndicator(
+              value: progress,
+              color: theme.colorScheme.primary,
+            ),
+          ],
+        ),
       ),
     );
   }
