@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 10, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual e os primeiros requisitos de acessibilidade do aplicativo foram criados:
+Até a Aula 11, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade e a navegação inicial do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -57,7 +57,7 @@ Até a Aula 10, a infraestrutura inicial do monorepo, a primeira interação com
 - apresentação extraída para o `StatelessWidget` `MedicationCounterContent`;
 - fluxo de dados unidirecional exercitado com `count` descendo para o filho e `onScan` retornando como callback;
 - reconstruções e métodos `initState`, `build` e `dispose` instrumentados com logs;
-- hot reload e hot restart verificados durante o desenvolvimento.
+- hot reload e hot restart verificados durante o desenvolvimento;
 - tema Material 3 centralizado em `AppTheme`, com um `ColorScheme` derivado da cor-base própria do MediFlow;
 - cores e estilos tipográficos consumidos pela árvore por meio de `Theme.of(context)`;
 - escala de espaçamento definida em `AppSpacing`, evitando valores de layout dispersos;
@@ -69,9 +69,15 @@ Até a Aula 10, a infraestrutura inicial do monorepo, a primeira interação com
 - semântica visual duplicada removida do contador com `ExcludeSemantics`;
 - alvo mínimo de 48 por 48 pixels lógicos aplicado globalmente aos botões elevados;
 - interface validada manualmente com fonte ampliada em retrato e paisagem, mantendo conteúdo, contador e botão alcançáveis;
-- teste de widget verificando alvo de toque Android, rótulos dos controles e contraste textual com a Accessibility Guideline API do Flutter.
+- teste de widget verificando alvo de toque Android, rótulos dos controles e contraste textual com a Accessibility Guideline API do Flutter;
+- tela inicial `BenefitsHomePage` criada com saldo fictício de R$ 250,00 e entrada explícita no Modo Farmácia;
+- navegação imperativa implementada com `Navigator.push`, `MaterialPageRoute<void>` e retorno pela pilha de rotas;
+- remoção de `PharmacyModePage` validada pela seta da `AppBar` e pelo retorno do Android, com descarte do estado local em `dispose`;
+- indicador reutilizável `CheckoutProgressIndicator` criado com quatro marcadores e `LinearProgressIndicator` determinístico em 25% na primeira etapa;
+- progresso consolidado em um único nó semântico, com rótulo e valor compreensíveis e sem anúncios duplicados dos elementos visuais;
+- testes de widget cobrindo a tela inicial, a abertura do Modo Farmácia, o retorno à tela de benefícios e a recriação do contador com valor inicial.
 
-O aplicativo exibe o “Modo Farmácia”, permite simular leituras de medicamentos e atualiza um contador local em uma interface responsiva com identidade própria. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, permite simular leituras de medicamentos e atualiza um contador local. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
 
 ## Limites do projeto
 
@@ -101,7 +107,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes do aplicativo e do package aprovados e apenas alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade e navegação do aplicativo e os testes do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -118,3 +124,9 @@ O resultado esperado é análise estática sem problemas, os testes do aplicativ
 - [Testes de acessibilidade](https://docs.flutter.dev/ui/accessibility/accessibility-testing)
 - [`Semantics`](https://api.flutter.dev/flutter/widgets/Semantics-class.html)
 - [`ExcludeSemantics`](https://api.flutter.dev/flutter/widgets/ExcludeSemantics-class.html)
+- [Navegação e roteamento](https://docs.flutter.dev/ui/navigation)
+- [Navegar para uma nova tela e voltar](https://docs.flutter.dev/cookbook/navigation/navigation-basics)
+- [`MaterialPageRoute`](https://api.flutter.dev/flutter/material/MaterialPageRoute-class.html)
+- [`LinearProgressIndicator`](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
+- [Introdução aos testes de widget](https://docs.flutter.dev/cookbook/testing/widget/introduction)
+- [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)
