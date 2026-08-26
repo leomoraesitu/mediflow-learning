@@ -1,9 +1,15 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:test/test.dart';
 
-void main() {
-  final pubspec = File('pubspec.yaml').readAsStringSync();
+Future<void> main() async {
+  final libraryUri = await Isolate.resolvePackageUri(
+    Uri.parse('package:checkout_domain/checkout_domain.dart'),
+  );
+  final pubspecUri = libraryUri?.resolve('../pubspec.yaml');
+
+  final pubspec = File.fromUri(pubspecUri!).readAsStringSync();
 
   group('checkout_domain boundaries', () {
     test('uses shared workspace resolution', () {
