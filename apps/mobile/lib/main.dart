@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MainApp());
@@ -102,11 +103,29 @@ class PharmacyModePage extends StatefulWidget {
 
 class _PharmacyModePageState extends State<PharmacyModePage> {
   int _scannedMedicationCount = 0;
+  final _formKey = GlobalKey<FormState>();
+  final _prescriptionController = TextEditingController();
+  final _eanController = TextEditingController();
+
+  void _fillDemoEan() {
+    _eanController.text = '7891000000011';
+  }
 
   void _scanMedication() {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      return;
+    }
     setState(() {
       _scannedMedicationCount++;
     });
+
+    _eanController.clear();
+    FocusScope.of(context).unfocus();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Medicamento adicionado à compra.')),
+    );
   }
 
   @override
@@ -139,6 +158,10 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
               child: MedicationCounterContent(
                 count: _scannedMedicationCount,
                 onScan: _scanMedication,
+                prescriptionController: _prescriptionController,
+                eanController: _eanController,
+                formKey: _formKey,
+                onFillDemoEan: _fillDemoEan,
               ),
             ),
           ],
@@ -150,6 +173,8 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
   @override
   void dispose() {
     debugPrint('PharmacyModePage: dispose');
+    _prescriptionController.dispose();
+    _eanController.dispose();
     super.dispose();
   }
 }
@@ -158,11 +183,19 @@ class MedicationCounterContent extends StatelessWidget {
   const MedicationCounterContent({
     required this.count,
     required this.onScan,
+    required this.prescriptionController,
+    required this.eanController,
+    required this.formKey,
+    required this.onFillDemoEan,
     super.key,
   });
 
   final int count;
   final VoidCallback onScan;
+  final TextEditingController prescriptionController;
+  final TextEditingController eanController;
+  final GlobalKey<FormState> formKey;
+  final VoidCallback onFillDemoEan;
 
   @override
   Widget build(BuildContext context) {
@@ -176,40 +209,95 @@ class MedicationCounterContent extends StatelessWidget {
       _ => '$count medicamentos lidos',
     };
     return MediFlowContentCard(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.medication_outlined, size: 48, color: colorScheme.primary),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Leitura de medicamentos',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Simule a leitura para acompanhar os itens desta compra.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+      child: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.medication_outlined,
+              size: 48,
+              color: colorScheme.primary,
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Semantics(
-            container: true,
-            liveRegion: true,
-            label: 'Quantidade de medicamentos lidos',
-            value: '$count',
-            child: ExcludeSemantics(
-              child: Text(medicationLabel, style: theme.textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Leitura de medicamentos',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall,
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          ElevatedButton(
-            onPressed: onScan,
-            child: const Text('Simular leitura'),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Simule a leitura para acompanhar os itens desta compra.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            TextFormField(
+              controller: prescriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Referência da receita',
+                hintText: 'RX-001',
+              ),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Informe a referência da receita.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: eanController,
+              decoration: const InputDecoration(
+                labelText: 'EAN do medicamento',
+                hintText: '13 dígitos',
+              ),
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(13),
+              ],
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Informe o EAN do medicamento.';
+                }
+                if (value.length != 13) {
+                  return 'O EAN deve conter 13 dígitos.';
+                }
+                return null;
+              },
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onFillDemoEan,
+                icon: const Icon(Icons.auto_fix_high_outlined),
+                label: const Text('Usar EAN de demonstração'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Semantics(
+              container: true,
+              liveRegion: true,
+              label: 'Quantidade de medicamentos lidos',
+              value: '$count',
+              child: ExcludeSemantics(
+                child: Text(
+                  medicationLabel,
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ElevatedButton(
+              onPressed: onScan,
+              child: const Text('Simular leitura'),
+            ),
+          ],
+        ),
       ),
     );
   }

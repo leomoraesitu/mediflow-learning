@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 11, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade e a navegação inicial do checkout foram criados:
+Até a Aula 12, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial e a entrada validada do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -75,9 +75,16 @@ Até a Aula 11, a infraestrutura inicial do monorepo, a primeira interação com
 - remoção de `PharmacyModePage` validada pela seta da `AppBar` e pelo retorno do Android, com descarte do estado local em `dispose`;
 - indicador reutilizável `CheckoutProgressIndicator` criado com quatro marcadores e `LinearProgressIndicator` determinístico em 25% na primeira etapa;
 - progresso consolidado em um único nó semântico, com rótulo e valor compreensíveis e sem anúncios duplicados dos elementos visuais;
-- testes de widget cobrindo a tela inicial, a abertura do Modo Farmácia, o retorno à tela de benefícios e a recriação do contador com valor inicial.
+- testes de widget cobrindo a tela inicial, a abertura do Modo Farmácia, o retorno à tela de benefícios e a recriação do contador com valor inicial;
+- formulário da primeira etapa criado com referência de receita e EAN fictícios, coordenado por `Form` e `GlobalKey<FormState>`;
+- `TextEditingController`s mantidos pelo estado da página e descartados em `dispose`;
+- entrada do EAN restrita a dígitos e ao máximo de 13 caracteres com `FilteringTextInputFormatter` e `LengthLimitingTextInputFormatter`;
+- validação impedindo leituras sem receita, sem EAN ou com EAN diferente de 13 dígitos;
+- ação explícita para preencher um EAN de demonstração sem depender de câmera ou código de barras real;
+- leitura válida incrementando o contador, limpando o EAN, removendo o foco do formulário e apresentando confirmação por `SnackBar`, enquanto a receita permanece disponível para novas leituras;
+- testes de widget cobrindo formulário vazio, EAN incompleto e o fluxo demonstrativo válido.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, permite simular leituras de medicamentos e atualiza um contador local. O fluxo ainda é exclusivamente educacional e não contém regras de negócio, persistência ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O fluxo ainda é exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -107,7 +114,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade e navegação do aplicativo e os testes do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -128,5 +135,11 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [Navegar para uma nova tela e voltar](https://docs.flutter.dev/cookbook/navigation/navigation-basics)
 - [`MaterialPageRoute`](https://api.flutter.dev/flutter/material/MaterialPageRoute-class.html)
 - [`LinearProgressIndicator`](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
+- [Criar um formulário com validação](https://docs.flutter.dev/cookbook/forms/validation)
+- [`TextFormField`](https://api.flutter.dev/flutter/material/TextFormField-class.html)
+- [`TextEditingController`](https://api.flutter.dev/flutter/widgets/TextEditingController-class.html)
+- [`FilteringTextInputFormatter`](https://api.flutter.dev/flutter/services/FilteringTextInputFormatter-class.html)
+- [`LengthLimitingTextInputFormatter`](https://api.flutter.dev/flutter/services/LengthLimitingTextInputFormatter-class.html)
+- [`SnackBar`](https://api.flutter.dev/flutter/material/SnackBar-class.html)
 - [Introdução aos testes de widget](https://docs.flutter.dev/cookbook/testing/widget/introduction)
 - [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)

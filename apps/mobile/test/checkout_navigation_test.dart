@@ -34,8 +34,17 @@ void main() {
     await tester.tap(openPharmacyModeButton);
     await tester.pumpAndSettle();
 
+    await tester.enterText(find.byType(TextFormField).at(0), 'RX-001');
+    await tester.enterText(find.byType(TextFormField).at(1), '7891000000011');
+
+    await tester.ensureVisible(readingSimulation);
+    await tester.pumpAndSettle();
+
     await tester.tap(readingSimulation);
     await tester.pump();
+
+    await tester.enterText(find.byType(TextFormField).at(1), '7891000000011');
+
     await tester.tap(readingSimulation);
     await tester.pump();
 
