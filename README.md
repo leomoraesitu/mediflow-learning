@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 12, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial e a entrada validada do checkout foram criados:
+Até a Aula 13, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada e os modelos fundamentais do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -82,9 +82,17 @@ Até a Aula 12, a infraestrutura inicial do monorepo, a primeira interação com
 - validação impedindo leituras sem receita, sem EAN ou com EAN diferente de 13 dígitos;
 - ação explícita para preencher um EAN de demonstração sem depender de câmera ou código de barras real;
 - leitura válida incrementando o contador, limpando o EAN, removendo o foco do formulário e apresentando confirmação por `SnackBar`, enquanto a receita permanece disponível para novas leituras;
-- testes de widget cobrindo formulário vazio, EAN incompleto e o fluxo demonstrativo válido.
+- testes de widget cobrindo formulário vazio, EAN incompleto e o fluxo demonstrativo válido;
+- modelos `Prescription`, `Medication`, `CheckoutSession` e `RemoteFlags` implementados como tipos Dart puros com campos finais;
+- valores monetários representados em centavos com `int`, evitando erros de precisão binária de `double`;
+- medicamentos de `CheckoutSession` protegidos por cópia defensiva não modificável com `List.unmodifiable`;
+- `CheckoutStatus` e `DemoScenario` definidos como conjuntos fechados de valores, separando o estado real da sessão dos cenários fictícios da demonstração;
+- `CheckoutEvent` modelado como hierarquia `sealed`, com subtipos capazes de transportar os dados específicos de cada acontecimento;
+- fachada pública do package consolidada em `checkout_domain.dart`, sem exigir imports diretos de `lib/src` pelos consumidores;
+- testes Dart cobrindo preservação de valores, cópia defensiva, rejeição de mutações e pertencimento dos eventos à hierarquia;
+- teste de fronteira independente do diretório de execução, localizando o `pubspec.yaml` do package por `Isolate.resolvePackageUri` e impedindo dependências de Flutter, Firebase, Dio e Drift.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O fluxo ainda é exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. Os modelos fundamentais já existem no package Dart puro, mas ainda não estão integrados à interface por uma máquina de estados ou gerenciamento de estado. O fluxo continua exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -114,7 +122,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -143,3 +151,7 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [`SnackBar`](https://api.flutter.dev/flutter/material/SnackBar-class.html)
 - [Introdução aos testes de widget](https://docs.flutter.dev/cookbook/testing/widget/introduction)
 - [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)
+- [Modificadores de classes em Dart](https://dart.dev/language/class-modifiers)
+- [Enums em Dart](https://dart.dev/language/enums)
+- [`List.unmodifiable`](https://api.dart.dev/dart-core/List/List.unmodifiable.html)
+- [`Isolate.resolvePackageUri`](https://api.dart.dev/dart-isolate/Isolate/resolvePackageUri.html)
