@@ -83,6 +83,23 @@ void main() {
         throwsUnsupportedError,
       );
     });
+
+    test('preserves payment and recovery context', () {
+      final session = CheckoutSession(
+        id: 'session-002',
+        availableBalanceInCents: 10000,
+        prescription: Prescription(reference: 'RX-002'),
+        medications: createMedications(2),
+        status: CheckoutStatus.recoverableFailure,
+        remoteCheckoutId: 'checkout-001',
+        retryTargetStatus: CheckoutStatus.creatingPayment,
+        statusMessage: 'Connection lost after payment creation',
+      );
+
+      expect(session.remoteCheckoutId, 'checkout-001');
+      expect(session.retryTargetStatus, CheckoutStatus.creatingPayment);
+      expect(session.statusMessage, 'Connection lost after payment creation');
+    });
   });
 
   group('CheckoutEvent', () {
