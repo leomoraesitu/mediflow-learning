@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 13, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada e os modelos fundamentais do checkout foram criados:
+Até a Aula 14, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais e o contrato da máquina de estados do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -90,9 +90,14 @@ Até a Aula 13, a infraestrutura inicial do monorepo, a primeira interação com
 - `CheckoutEvent` modelado como hierarquia `sealed`, com subtipos capazes de transportar os dados específicos de cada acontecimento;
 - fachada pública do package consolidada em `checkout_domain.dart`, sem exigir imports diretos de `lib/src` pelos consumidores;
 - testes Dart cobrindo preservação de valores, cópia defensiva, rejeição de mutações e pertencimento dos eventos à hierarquia;
-- teste de fronteira independente do diretório de execução, localizando o `pubspec.yaml` do package por `Isolate.resolvePackageUri` e impedindo dependências de Flutter, Firebase, Dio e Drift.
+- teste de fronteira independente do diretório de execução, localizando o `pubspec.yaml` do package por `Isolate.resolvePackageUri` e impedindo dependências de Flutter, Firebase, Dio e Drift;
+- `CheckoutStatus.failed` adicionado para distinguir falhas permanentes de `recoverableFailure`;
+- estados terminais definidos como `maintenance`, `failed` e `paid` pela extensão `CheckoutStatusProperties`;
+- classificação terminal implementada com `switch` exaustivo, sem caso curinga, obrigando a revisão da regra quando um novo status for criado;
+- `CheckoutSession` preparada para preservar `remoteCheckoutId`, a etapa interrompida em `retryTargetStatus` e uma mensagem contextual em `statusMessage`;
+- testes Dart cobrindo a preservação do contexto de pagamento e recuperação e a classificação de todos os estados terminais e não terminais.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. Os modelos fundamentais já existem no package Dart puro, mas ainda não estão integrados à interface por uma máquina de estados ou gerenciamento de estado. O fluxo continua exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados e o contexto que será preservado entre as transições, mas a função responsável por executar essas transições ainda não foi implementada nem integrada à interface. Essa implementação começará com testes vermelhos na Aula 15. O fluxo continua exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -122,7 +127,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -153,5 +158,7 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)
 - [Modificadores de classes em Dart](https://dart.dev/language/class-modifiers)
 - [Enums em Dart](https://dart.dev/language/enums)
+- [Branches em Dart](https://dart.dev/language/branches)
+- [Patterns em Dart](https://dart.dev/language/patterns)
 - [`List.unmodifiable`](https://api.dart.dev/dart-core/List/List.unmodifiable.html)
 - [`Isolate.resolvePackageUri`](https://api.dart.dev/dart-isolate/Isolate/resolvePackageUri.html)
