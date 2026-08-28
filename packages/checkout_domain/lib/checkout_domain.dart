@@ -11,3 +11,6 @@ export 'src/medication.dart';
 export 'src/prescription.dart';
 export 'src/remote_flags.dart';
 export 'src/checkout_state_machine.dart';
+export 'src/repositories/prescription_repository.dart';
+export 'src/repositories/medication_repository.dart';
+export 'src/repositories/checkout_repository.dart';
