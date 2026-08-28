@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 16, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados e os contratos de repositório do checkout foram criados:
+Até a Aula 17, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório e o primeiro Cubit do aplicativo foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -53,7 +53,7 @@ Até a Aula 16, a infraestrutura inicial do monorepo, a primeira interação com
 - resolução e lockfile compartilhados na raiz;
 - scaffold Flutter Android criado em `apps/mobile`;
 - primeira árvore de widgets executada e validada em um emulador Android;
-- `PharmacyModePage` implementada como `StatefulWidget`, com o contador mantido em seu objeto `State`;
+- `PharmacyModePage` mantida como `StatefulWidget` para coordenar o formulário, os controllers e o ciclo de vida da rota;
 - apresentação extraída para o `StatelessWidget` `MedicationCounterContent`;
 - fluxo de dados unidirecional exercitado com `count` descendo para o filho e `onScan` retornando como callback;
 - reconstruções e métodos `initState`, `build` e `dispose` instrumentados com logs;
@@ -109,9 +109,17 @@ Até a Aula 16, a infraestrutura inicial do monorepo, a primeira interação com
 - validação de receita e elegibilidade representando resultados esperados do negócio com `bool`, enquanto falhas técnicas permanecem representadas por exceções;
 - criação do checkout devolvendo o `remoteCheckoutId` e consulta posterior recuperando o mesmo checkout remoto sem repetir a operação de criação;
 - implementações falsas exercitando substituição pelos contratos e um consumidor didático recebendo as três dependências por construtor;
-- suíte completa do package validada com análise estática limpa e 24 testes aprovados.
+- suíte completa do package validada com análise estática limpa e 24 testes aprovados;
+- `MedicationCounterState` criado como snapshot imutável da quantidade de medicamentos lidos;
+- `MedicationCounterCubit` assumindo a lógica do contador e emitindo um novo estado a cada leitura válida, sem depender de `setState`;
+- `BlocProvider` instalado na composição da rota do Modo Farmácia para fornecer o Cubit e controlar seu ciclo de vida;
+- ação de leitura acessando o Cubit com `context.read()`, sem assinar a página inteira às mudanças de estado;
+- `BlocBuilder` limitando as reconstruções à região de conteúdo que apresenta o contador;
+- logs manuais confirmando os estados `0`, `1` e `2` no conteúdo sem reconstruir `PharmacyModePage` a cada emissão;
+- teste unitário do estado inicial e `blocTest` da primeira emissão do Cubit adicionados à suíte mobile;
+- dependências `flutter_bloc` e `bloc_test` registradas no aplicativo e resolvidas pelo lockfile compartilhado do workspace.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. A máquina de estados e os repositórios ainda não estão integrados à interface; o Cubit será introduzido nas próximas aulas para assumir essa coordenação. O fluxo continua exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza, por meio de um Cubit, o contador após cada leitura válida. O package Dart puro já define os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O Cubit básico ainda controla somente o contador; a máquina de estados e os repositórios serão integrados à interface pelo `CheckoutCubit` nas próximas aulas. O fluxo continua exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -141,7 +149,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação, validação de entrada e Cubit básico do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -178,5 +186,7 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [Tratamento de erros em Dart](https://dart.dev/language/error-handling)
 - [Testes em Dart](https://dart.dev/libraries/testing)
 - [Package `test`](https://pub.dev/packages/test)
+- [`flutter_bloc`](https://pub.dev/packages/flutter_bloc)
+- [`bloc_test`](https://pub.dev/packages/bloc_test)
 - [`List.unmodifiable`](https://api.dart.dev/dart-core/List/List.unmodifiable.html)
 - [`Isolate.resolvePackageUri`](https://api.dart.dev/dart-isolate/Isolate/resolvePackageUri.html)

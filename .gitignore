@@ -8,3 +8,6 @@ coverage/
 .vscode/
 *.iml
 .DS_Store
+
+# Local Dart and Flutter DevTools settings
+devtools_options.yaml
