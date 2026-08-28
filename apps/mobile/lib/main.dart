@@ -4,6 +4,9 @@ import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/cubit/medication_counter_cubit.dart';
+
 void main() {
   runApp(const MainApp());
 }
@@ -29,7 +32,10 @@ class BenefitsHomePage extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) {
-          return const PharmacyModePage();
+          return BlocProvider(
+            create: (_) => MedicationCounterCubit(),
+            child: const PharmacyModePage(),
+          );
         },
       ),
     );
@@ -102,7 +108,6 @@ class PharmacyModePage extends StatefulWidget {
 }
 
 class _PharmacyModePageState extends State<PharmacyModePage> {
-  int _scannedMedicationCount = 0;
   final _formKey = GlobalKey<FormState>();
   final _prescriptionController = TextEditingController();
   final _eanController = TextEditingController();
@@ -116,9 +121,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     if (!isValid) {
       return;
     }
-    setState(() {
-      _scannedMedicationCount++;
-    });
+    context.read<MedicationCounterCubit>().registerMedicationScan();
 
     _eanController.clear();
     FocusScope.of(context).unfocus();
@@ -136,9 +139,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(
-      'PharmacyModePage: build — $_scannedMedicationCount medicamento(s)',
-    );
+    debugPrint('PharmacyModePage: build');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Modo Farmácia')),
@@ -155,14 +156,19 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
               ),
             ),
             Expanded(
-              child: MedicationCounterContent(
-                count: _scannedMedicationCount,
-                onScan: _scanMedication,
-                prescriptionController: _prescriptionController,
-                eanController: _eanController,
-                formKey: _formKey,
-                onFillDemoEan: _fillDemoEan,
-              ),
+              child:
+                  BlocBuilder<MedicationCounterCubit, MedicationCounterState>(
+                    builder: (context, state) {
+                      return MedicationCounterContent(
+                        count: state.scannedMedicationCount,
+                        onScan: _scanMedication,
+                        prescriptionController: _prescriptionController,
+                        eanController: _eanController,
+                        formKey: _formKey,
+                        onFillDemoEan: _fillDemoEan,
+                      );
+                    },
+                  ),
             ),
           ],
         ),
