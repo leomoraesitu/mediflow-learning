@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 14, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais e o contrato da máquina de estados do checkout foram criados:
+Até a Aula 15, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais e a máquina de estados do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -95,9 +95,19 @@ Até a Aula 14, a infraestrutura inicial do monorepo, a primeira interação com
 - estados terminais definidos como `maintenance`, `failed` e `paid` pela extensão `CheckoutStatusProperties`;
 - classificação terminal implementada com `switch` exaustivo, sem caso curinga, obrigando a revisão da regra quando um novo status for criado;
 - `CheckoutSession` preparada para preservar `remoteCheckoutId`, a etapa interrompida em `retryTargetStatus` e uma mensagem contextual em `statusMessage`;
-- testes Dart cobrindo a preservação do contexto de pagamento e recuperação e a classificação de todos os estados terminais e não terminais.
+- testes Dart cobrindo a preservação do contexto de pagamento e recuperação e a classificação de todos os estados terminais e não terminais;
+- `CheckoutStateMachine` implementada em Dart puro para transformar uma sessão e um evento em um novo snapshot imutável;
+- fluxo de sucesso coberto desde a coleta do medicamento, submissão e validação da receita, elegibilidade e criação do pagamento até a confirmação final;
+- transições inválidas rejeitadas explicitamente por `InvalidCheckoutTransitionException`, preservando o estado original e expondo o status e o evento envolvidos;
+- manutenção tratada como estado terminal, com mensagem contextual e remoção de qualquer possibilidade de retry;
+- falhas recuperáveis preservando a etapa interrompida, a mensagem e o identificador do checkout remoto para retomada segura;
+- retry retornando exatamente à etapa armazenada e limpando o contexto temporário de falha sem recriar o checkout remoto;
+- falhas permanentes encerrando a sessão em `failed`, preservando o identificador remoto e removendo o contexto de recuperação;
+- confirmação assíncrona aceita durante `awaitingConfirmation` ou após uma falha recuperável dessa mesma etapa, sempre vinculada a um `remoteCheckoutId` existente;
+- oito testes da máquina de estados desenvolvidos em ciclos RED → GREEN para sucesso, evento inválido, manutenção, timeout recuperável, retry, falha permanente e confirmação assíncrona;
+- suíte completa do package validada com análise estática limpa e 20 testes aprovados.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados e o contexto que será preservado entre as transições, mas a função responsável por executar essas transições ainda não foi implementada nem integrada à interface. Essa implementação começará com testes vermelhos na Aula 15. O fluxo continua exclusivamente educacional e não contém elegibilidade, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados, o contexto de recuperação e as transições válidas da sessão. A máquina de estados ainda não está integrada à interface; essa ligação começará na Aula 16 por meio de contratos de repositório, implementações falsas e injeção de dependências por construtor. O fluxo continua exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -127,7 +137,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados, máquina de estados e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -160,5 +170,8 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [Enums em Dart](https://dart.dev/language/enums)
 - [Branches em Dart](https://dart.dev/language/branches)
 - [Patterns em Dart](https://dart.dev/language/patterns)
+- [Tratamento de erros em Dart](https://dart.dev/language/error-handling)
+- [Testes em Dart](https://dart.dev/libraries/testing)
+- [Package `test`](https://pub.dev/packages/test)
 - [`List.unmodifiable`](https://api.dart.dev/dart-core/List/List.unmodifiable.html)
 - [`Isolate.resolvePackageUri`](https://api.dart.dev/dart-isolate/Isolate/resolvePackageUri.html)

@@ -10,3 +10,4 @@ export 'src/demo_scenario.dart';
 export 'src/medication.dart';
 export 'src/prescription.dart';
 export 'src/remote_flags.dart';
+export 'src/checkout_state_machine.dart';
