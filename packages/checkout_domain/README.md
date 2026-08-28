@@ -1,6 +1,6 @@
 # Checkout Domain
 
-Package Dart puro que concentra os modelos fundamentais do checkout do MediFlow e será compartilhado entre os clientes mobile e Web.
+Package Dart puro que concentra os modelos, as regras, as transições e os contratos de dados do checkout do MediFlow e será compartilhado entre os clientes mobile e Web.
 
 ## Regra de dependência
 
@@ -16,7 +16,11 @@ Essa fronteira mantém as regras independentes de interface, rede, persistência
 - `CheckoutStatus`: conjunto fechado de estados da sessão, acompanhado da classificação de estados terminais;
 - `CheckoutEvent`: hierarquia fechada de acontecimentos, com dados específicos por subtipo;
 - `RemoteFlags`: configuração remota já carregada e disponível para o domínio;
-- `DemoScenario`: cenários fictícios usados somente na demonstração.
+- `DemoScenario`: cenários fictícios usados somente na demonstração;
+- `CheckoutStateMachine`: transformação validada de uma sessão e um evento em um novo snapshot imutável;
+- `PrescriptionRepository`: contrato para validação de receitas sintéticas;
+- `MedicationRepository`: contrato para consulta de elegibilidade de medicamentos;
+- `CheckoutRepository`: contrato para criação e recuperação de checkouts remotos.
 
 Os consumidores importam `package:checkout_domain/checkout_domain.dart`. Os arquivos em `lib/src` permanecem como detalhes internos do package.
 
@@ -30,8 +34,13 @@ Os consumidores importam `package:checkout_domain/checkout_domain.dart`. Os arqu
 - falhas recuperáveis e permanentes possuem estados distintos;
 - `maintenance`, `failed` e `paid` são estados terminais;
 - `CheckoutStatusProperties.isTerminal` usa um `switch` exaustivo, sem caso curinga;
+- `CheckoutStateMachine` rejeita transições inválidas e preserva o contexto necessário para retry e confirmação assíncrona;
+- contratos de repositório são definidos como `abstract interface class` e não conhecem suas implementações;
+- resultados esperados de validação e elegibilidade usam `bool`, reservando exceções para falhas técnicas;
+- `CheckoutRepository.create` devolve o identificador remoto, e `getById` permite consultar o checkout existente sem iniciar outra criação;
+- consumidores podem receber implementações compatíveis por injeção de dependência no construtor;
 - o `pubspec.yaml` usa a resolução compartilhada do Pub Workspace;
-- testes verificam os modelos, o contexto de recuperação, a classificação dos estados e as fronteiras do package.
+- testes verificam os modelos, o contexto de recuperação, a classificação dos estados, a máquina de estados, os contratos de repositório, a injeção por construtor e as fronteiras do package.
 
 ## Validação
 
@@ -44,4 +53,4 @@ dart test packages/checkout_domain
 
 ## Status
 
-A estrutura inicial foi criada na Aula 6, e os modelos fundamentais foram implementados e testados na Aula 13. Na Aula 14, foram definidos os estados, os estados terminais e os dados que a sessão precisa preservar para permitir retomadas seguras. As transições ainda não são executadas por uma máquina: sua implementação começará por testes vermelhos na Aula 15.
+A estrutura inicial foi criada na Aula 6, e os modelos fundamentais foram implementados e testados na Aula 13. Na Aula 14, foram definidos os estados, os estados terminais e os dados necessários para retomadas seguras. A Aula 15 implementou e testou a máquina de estados. Na Aula 16, foram adicionados os contratos de repositório, implementações falsas e uma prova de injeção por construtor. O package permanece independente de Flutter e de infraestrutura; a integração com o gerenciamento de estado do aplicativo começará nas próximas aulas.

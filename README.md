@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 15, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais e a máquina de estados do checkout foram criados:
+Até a Aula 16, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados e os contratos de repositório do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -105,9 +105,13 @@ Até a Aula 15, a infraestrutura inicial do monorepo, a primeira interação com
 - falhas permanentes encerrando a sessão em `failed`, preservando o identificador remoto e removendo o contexto de recuperação;
 - confirmação assíncrona aceita durante `awaitingConfirmation` ou após uma falha recuperável dessa mesma etapa, sempre vinculada a um `remoteCheckoutId` existente;
 - oito testes da máquina de estados desenvolvidos em ciclos RED → GREEN para sucesso, evento inválido, manutenção, timeout recuperável, retry, falha permanente e confirmação assíncrona;
-- suíte completa do package validada com análise estática limpa e 20 testes aprovados.
+- contratos `PrescriptionRepository`, `MedicationRepository` e `CheckoutRepository` definidos como `abstract interface class`, mantendo o domínio independente de interface, rede e persistência;
+- validação de receita e elegibilidade representando resultados esperados do negócio com `bool`, enquanto falhas técnicas permanecem representadas por exceções;
+- criação do checkout devolvendo o `remoteCheckoutId` e consulta posterior recuperando o mesmo checkout remoto sem repetir a operação de criação;
+- implementações falsas exercitando substituição pelos contratos e um consumidor didático recebendo as três dependências por construtor;
+- suíte completa do package validada com análise estática limpa e 24 testes aprovados.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados, o contexto de recuperação e as transições válidas da sessão. A máquina de estados ainda não está integrada à interface; essa ligação começará na Aula 16 por meio de contratos de repositório, implementações falsas e injeção de dependências por construtor. O fluxo continua exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza um contador local após cada leitura válida. O package Dart puro já define os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. A máquina de estados e os repositórios ainda não estão integrados à interface; o Cubit será introduzido nas próximas aulas para assumir essa coordenação. O fluxo continua exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -137,7 +141,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados, máquina de estados e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação e validação de entrada do aplicativo e os testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados, além de somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -146,6 +150,7 @@ O resultado esperado é análise estática sem problemas, os testes de acessibil
 - [Pub.dev](https://pub.dev/)
 - [Pub Workspaces](https://dart.dev/tools/pub/workspaces)
 - [Guia de arquitetura do Flutter](https://docs.flutter.dev/app-architecture/guide)
+- [Comunicação entre camadas e injeção de dependência](https://docs.flutter.dev/app-architecture/case-study/dependency-injection)
 - [Temas no Flutter](https://docs.flutter.dev/cookbook/design/themes)
 - [Entendendo constraints](https://docs.flutter.dev/ui/layout/constraints)
 - [Abordagem geral para aplicativos adaptáveis](https://docs.flutter.dev/ui/adaptive-responsive/general)
