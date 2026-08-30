@@ -5,7 +5,9 @@ import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart
 import 'package:flutter/services.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/cubit/medication_counter_cubit.dart';
+import 'package:checkout_domain/checkout_domain.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 
 void main() {
   runApp(const MainApp());
@@ -33,7 +35,19 @@ class BenefitsHomePage extends StatelessWidget {
       MaterialPageRoute<void>(
         builder: (context) {
           return BlocProvider(
-            create: (_) => MedicationCounterCubit(),
+            create: (_) => CheckoutCubit(
+              initialSession: CheckoutSession(
+                id: 'session-001',
+                availableBalanceInCents: (availableBalance * 100).round(),
+                prescription: null,
+                medications: [],
+                status: CheckoutStatus.collectingMedication,
+              ),
+              stateMachine: const CheckoutStateMachine(),
+              prescriptionRepository: const DemoPrescriptionRepository(),
+              medicationRepository: const DemoMedicationRepository(),
+              checkoutRepository: DemoCheckoutRepository(),
+            ),
             child: const PharmacyModePage(),
           );
         },
@@ -121,7 +135,13 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     if (!isValid) {
       return;
     }
-    context.read<MedicationCounterCubit>().registerMedicationScan();
+    context.read<CheckoutCubit>().scanMedication(
+      Medication(
+        ean: _eanController.text,
+        name: 'Medicamento demonstrativo',
+        unitPriceInCents: 2500,
+      ),
+    );
 
     _eanController.clear();
     FocusScope.of(context).unfocus();
@@ -156,19 +176,18 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
               ),
             ),
             Expanded(
-              child:
-                  BlocBuilder<MedicationCounterCubit, MedicationCounterState>(
-                    builder: (context, state) {
-                      return MedicationCounterContent(
-                        count: state.scannedMedicationCount,
-                        onScan: _scanMedication,
-                        prescriptionController: _prescriptionController,
-                        eanController: _eanController,
-                        formKey: _formKey,
-                        onFillDemoEan: _fillDemoEan,
-                      );
-                    },
-                  ),
+              child: BlocBuilder<CheckoutCubit, CheckoutSession>(
+                builder: (context, session) {
+                  return MedicationCounterContent(
+                    count: session.medications.length,
+                    onScan: _scanMedication,
+                    prescriptionController: _prescriptionController,
+                    eanController: _eanController,
+                    formKey: _formKey,
+                    onFillDemoEan: _fillDemoEan,
+                  );
+                },
+              ),
             ),
           ],
         ),

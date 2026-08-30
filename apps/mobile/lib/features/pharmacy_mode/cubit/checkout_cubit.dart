@@ -1,3 +1,8 @@
+// ignore_for_file: prefer_initializing_formals
+//
+// The public constructor intentionally keeps dependency parameter names public
+// while storing the injected implementations in private fields.
+
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -18,6 +23,15 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
        _medicationRepository = medicationRepository,
        _checkoutRepository = checkoutRepository,
        super(initialSession);
+
+  void scanMedication(Medication medication) {
+    emit(
+      _stateMachine.transition(
+        session: state,
+        event: MedicationScanned(medication: medication),
+      ),
+    );
+  }
 
   Future<void> submitPrescription(Prescription prescription) async {
     emit(
