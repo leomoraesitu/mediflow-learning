@@ -44,7 +44,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 18, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório e os primeiros Cubits do aplicativo foram criados:
+Até a Aula 19, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório e a integração do estado do checkout com a interface foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -117,15 +117,21 @@ Até a Aula 18, a infraestrutura inicial do monorepo, a primeira interação com
 - `BlocBuilder` limitando as reconstruções à região de conteúdo que apresenta o contador;
 - logs manuais confirmando os estados `0`, `1` e `2` no conteúdo sem reconstruir `PharmacyModePage` a cada emissão;
 - teste unitário do estado inicial e `blocTest` da primeira emissão do Cubit adicionados à suíte mobile;
-- dependências `flutter_bloc` e `bloc_test` registradas no aplicativo e resolvidas pelo lockfile compartilhado do workspace.
+- dependências `flutter_bloc` e `bloc_test` registradas no aplicativo e resolvidas pelo lockfile compartilhado do workspace;
 - `CheckoutCubit` criado como camada de coordenação entre os contratos de repositório e a máquina de estados;
 - `CheckoutStateMachine` preservada como autoridade de todas as transições da sessão;
 - rejeições esperadas de receita e elegibilidade convertidas em falhas permanentes, enquanto falhas técnicas de criação e confirmação produzem falhas recuperáveis;
 - contexto de recuperação preservando `retryTargetStatus` e `remoteCheckoutId` para retomar a etapa correta sem recriar o pagamento remoto;
 - operações assíncronas protegidas por verificação de `isClosed` antes de novas emissões;
-- doze testes do `CheckoutCubit` cobrindo sucesso, rejeições de negócio, falhas técnicas recuperáveis, retry e confirmação do mesmo checkout remoto.
+- treze testes do `CheckoutCubit` cobrindo sucesso, leitura de medicamento, rejeições de negócio, falhas técnicas recuperáveis, retry e confirmação do mesmo checkout remoto;
+- `scanMedication` adicionando o medicamento à sessão por meio de `MedicationScanned` e da `CheckoutStateMachine`, sem alterar o status `collectingMedication`;
+- composição da rota migrada para um único `CheckoutCubit`, inicializado com a sessão local e implementações demonstrativas dos três contratos de repositório;
+- contador da interface derivado de `CheckoutSession.medications.length`, eliminando uma segunda fonte de verdade no fluxo em execução;
+- repositórios demonstrativos fornecendo respostas locais e determinísticas sem introduzir HTTP, banco de dados ou pagamento real;
+- teste de integração verificando que uma leitura válida atualiza a sessão consumida pela tela e apresenta `1 medicamento lido`;
+- suíte mobile validada com análise estática limpa e 22 testes aprovados.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e atualiza o contador após cada leitura válida. `MedicationCounterCubit` controla esse contador, enquanto `CheckoutCubit` coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`. O package Dart puro continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde exibe o progresso inicial do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva o contador da quantidade de medicamentos da própria sessão. O package Dart puro continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -155,7 +161,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, os testes de acessibilidade, navegação, validação de entrada, contador e os 12 testes do `CheckoutCubit` aprovados no aplicativo, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, 22 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface e os 13 testes do `CheckoutCubit` —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
