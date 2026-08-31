@@ -142,13 +142,6 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
         unitPriceInCents: 2500,
       ),
     );
-
-    _eanController.clear();
-    FocusScope.of(context).unfocus();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Medicamento adicionado à compra.')),
-    );
   }
 
   @override
@@ -176,7 +169,21 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
               ),
             ),
             Expanded(
-              child: BlocBuilder<CheckoutCubit, CheckoutSession>(
+              child: BlocConsumer<CheckoutCubit, CheckoutSession>(
+                listenWhen: (previous, current) {
+                  return current.medications.length >
+                      previous.medications.length;
+                },
+                listener: (context, session) {
+                  _eanController.clear();
+                  FocusScope.of(context).unfocus();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Medicamento adicionado à compra.'),
+                    ),
+                  );
+                },
                 builder: (context, session) {
                   return MedicationCounterContent(
                     count: session.medications.length,
