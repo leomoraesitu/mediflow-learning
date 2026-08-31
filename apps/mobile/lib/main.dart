@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
 void main() {
   runApp(const MainApp());
@@ -160,13 +161,18 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: const CheckoutProgressIndicator(
-                currentStep: 1,
-                totalSteps: 4,
-                label: 'Leitura do medicamento',
-              ),
+            BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>(
+              selector: selectCheckoutProgress,
+              builder: (context, progress) {
+                return Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: CheckoutProgressIndicator(
+                    currentStep: progress.currentStep,
+                    totalSteps: 4,
+                    label: progress.label,
+                  ),
+                );
+              },
             ),
             Expanded(
               child: BlocConsumer<CheckoutCubit, CheckoutSession>(

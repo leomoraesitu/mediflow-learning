@@ -4,7 +4,7 @@ Aplicativo Flutter Android principal do MediFlow Learning.
 
 ## Estado atual
 
-Até a Aula 20, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o primeiro passo do checkout com identidade visual própria, responsividade e acessibilidade. Essa etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual agora é um efeito reativo da sessão atualizada, não uma consequência direta do callback do formulário.
+Até a Aula 21, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o progresso do checkout com identidade visual própria, responsividade e acessibilidade. A primeira etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual é um efeito reativo da sessão atualizada, e o indicador deriva somente a etapa e o rótulo relevantes para cada status.
 
 A composição atual separa estado, apresentação e design system:
 
@@ -15,8 +15,9 @@ A composição atual separa estado, apresentação e design system:
 - `CheckoutCubit` mantém `CheckoutSession` como snapshot do fluxo, coordena os contratos de repositório e delega todas as transições para `CheckoutStateMachine`;
 - `DemoPrescriptionRepository`, `DemoMedicationRepository` e `DemoCheckoutRepository` fornecem respostas locais e determinísticas aos contratos exigidos pelo Cubit;
 - `BlocConsumer<CheckoutCubit, CheckoutSession>` observa as emissões, reconstrói a região de conteúdo e executa efeitos pontuais da interface;
+- `BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>` seleciona somente a etapa e o rótulo usados pelo indicador de progresso;
 - `MedicationCounterContent` continua como `StatelessWidget` e recebe do `builder` o contador, os callbacks, os controllers e a chave do formulário;
-- `CheckoutProgressIndicator` recebe etapa atual, total de etapas e rótulo para apresentar o progresso do checkout;
+- `CheckoutProgressIndicator` recebe do selector a etapa atual e o rótulo, além do total fixo de quatro etapas, para apresentar o progresso do checkout;
 - `AppTheme` centraliza o `ThemeData`, o Material 3 e o `ColorScheme` do aplicativo;
 - `AppSpacing` oferece uma escala compartilhada de espaçamentos;
 - `MediFlowContentCard` encapsula largura máxima, margem, padding e rolagem vertical.
@@ -31,7 +32,9 @@ O formulário agrupa dois `TextFormField`s. A referência da receita é obrigat�
 
 Quando `FormState.validate` rejeita a entrada, a sessão e a confirmação permanecem inalteradas. Em uma leitura válida, `scanMedication()` apenas solicita a inclusão à máquina de estados. O `listenWhen` compara as sessões anterior e atual e libera o `listener` somente quando a quantidade de medicamentos aumenta. Depois que esse novo snapshot confirma a inclusão, o EAN é limpo para o próximo medicamento, o foco é removido e um `SnackBar` apresenta a confirmação. A referência da receita permanece no formulário como contexto da mesma compra. Os dois `TextEditingController`s são descartados junto com o estado da página.
 
-O progresso inicial representa a etapa 1 de 4: quatro marcadores oferecem uma referência visual e o `LinearProgressIndicator` recebe o valor determinístico `0.25`. O componente usa os parâmetros recebidos para poder representar outras etapas futuramente.
+`selectCheckoutProgress` converte a `CheckoutSession` em um record `CheckoutProgressData` com `currentStep` e `label`. Coleta permanece na etapa 1; validação da receita e elegibilidade usam a etapa 2; criação do pagamento usa a etapa 3; confirmação pendente e pagamento concluído usam a etapa 4. Em `recoverableFailure`, o selector consulta `retryTargetStatus` para manter visível a etapa que deverá ser retomada. Como records possuem igualdade estrutural, o `BlocSelector` não reconstrói o indicador quando outra parte da sessão muda sem alterar esses dois valores.
+
+Quatro marcadores oferecem a referência visual, enquanto o `LinearProgressIndicator` calcula a fração a partir da etapa selecionada. O componente visual continua recebendo parâmetros e permanece independente das regras que convertem estados do domínio em apresentação.
 
 O conteúdo ocupa a largura disponível até o limite de 480 pixels lógicos. `SafeArea` respeita recortes e áreas de navegação do dispositivo, enquanto `SingleChildScrollView` oferece uma saída para alturas reduzidas. O comportamento foi validado em retrato e paisagem, inclusive com a fonte ampliada, sem overflow e com o contador e o botão alcançáveis.
 
@@ -47,6 +50,7 @@ Na camada de acessibilidade:
 - `medication_counter_cubit_test.dart` verifica o estado inicial do Cubit e, com `blocTest`, o estado emitido depois de uma leitura;
 - `checkout_cubit_test.dart` cobre o estado inicial, leitura de medicamento, validação e rejeição da receita, elegibilidade, criação, confirmação, falhas técnicas recuperáveis, retry e preservação do checkout remoto;
 - `checkout_ui_integration_test.dart` verifica que uma leitura válida atualiza `CheckoutSession.medications`, apresenta o contador derivado e que uma emissão direta do Cubit também dispara o `SnackBar` de confirmação;
+- `checkout_progress_selector_test.dart` cobre os mapeamentos das etapas 2, 3 e 4, o contexto de uma falha recuperável e a apresentação da seleção na interface;
 - as verificações automatizadas complementam os testes manuais com tecnologias assistivas, sem substituí-los.
 
 Os logs de `initState`, `build` e `dispose` permitem observar o ciclo de vida durante o aprendizado. Os registros manuais dos estados `0`, `1` e `2` também demonstram que as emissões reconstruíram `MedicationCounterContent` pelo `BlocConsumer`, enquanto `PharmacyModePage` não precisou ser reconstruída a cada mudança do contador. O hot reload preserva o objeto `State`, o hot restart recria a aplicação e a remoção da rota executa `dispose` no estado da página.
@@ -78,7 +82,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 23 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface e o efeito reativo de confirmação — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 28 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação e progresso selecionado da sessão — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
 
 ## Referências oficiais
 
@@ -108,4 +112,6 @@ O resultado esperado é formatação limpa, análise estática sem problemas, 23
 - [Introdução aos testes de widget](https://docs.flutter.dev/cookbook/testing/widget/introduction)
 - [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)
 - [`flutter_bloc`](https://pub.dev/packages/flutter_bloc)
+- [`BlocSelector`](https://pub.dev/documentation/flutter_bloc/latest/flutter_bloc/BlocSelector-class.html)
 - [`bloc_test`](https://pub.dev/packages/bloc_test)
+- [Records em Dart](https://dart.dev/language/records)
