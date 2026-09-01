@@ -1,8 +1,10 @@
 # MediFlow Learning
 
-Repositório privado para a reconstrução educacional e guiada do MediFlow, um estudo independente sobre um checkout de medicamentos resiliente. O projeto será desenvolvido do zero, aula por aula, para exercitar Dart, Flutter, testes, arquitetura, resiliência e observabilidade.
+Repositório público do MediFlow Learning, um projeto educacional independente sobre um checkout de medicamentos resiliente. O desenvolvimento acontece de forma incremental, aula por aula, para exercitar Dart, Flutter, testes, arquitetura, resiliência e observabilidade e permitir o acompanhamento público dessa evolução.
 
-Este repositório não copia a identidade visual da Omni Saúde, não representa uma parceria com a empresa e não deve ser interpretado como um produto clínico ou financeiro real.
+Este repositório utiliza identidade visual própria, não representa uma parceria comercial e não deve ser interpretado como um produto clínico ou financeiro real.
+
+Como todo o conteúdo é público, exemplos, fixtures, logs e configurações devem utilizar somente dados fictícios. Credenciais, tokens, chaves, dados pessoais, informações médicas reais e outros segredos não devem ser adicionados ao repositório.
 
 ## Baseline do curso
 
@@ -44,7 +46,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 22, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão e o feedback de falhas foram criados:
+Até a Aula 24, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão, o feedback de falhas e as ações de avanço do checkout foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -143,15 +145,20 @@ Até a Aula 22, a infraestrutura inicial do monorepo, a primeira interação com
 - ação `Tentar novamente` restrita a `recoverableFailure`, retomando o `retryTargetStatus` por meio de `CheckoutCubit.retry()` e limpando o contexto temporário da falha;
 - falhas permanentes apresentando a mensagem contextual sem oferecer uma ação de retry incompatível com o encerramento da sessão;
 - testes de widget cobrindo o anúncio acessível da falha recuperável, a retomada da etapa interrompida e a ausência do botão de retry em falhas permanentes;
-- suíte mobile validada com análise estática limpa e 30 testes aprovados.
+- ação `Validar compra` conectada a `CheckoutCubit.submitPrescription()`, disponível somente durante a coleta e depois da inclusão de ao menos um medicamento;
+- validação do formulário preservada como pré-condição da submissão, impedindo o avanço quando a referência da receita está vazia;
+- ações `Verificar elegibilidade`, `Criar pagamento` e `Confirmar pagamento` apresentadas apenas nos estados correspondentes e delegadas ao `CheckoutCubit`;
+- mesma instância de `DemoCheckoutRepository` preservando o checkout demonstrativo entre criação e consulta, vinculada pelo `remoteCheckoutId`;
+- testes de widget cobrindo a submissão da receita, a indisponibilidade da ação incompleta e o avanço visual pelas etapas de elegibilidade, criação e confirmação do pagamento;
+- suíte mobile validada com análise estática limpa e 28 testes aprovados.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde deriva o progresso do status atual do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva da própria sessão o contador, o progresso e o feedback contextual de falhas. O `BlocConsumer` reconstrói o conteúdo e executa a confirmação somente depois que a sessão emitida registra outro medicamento, enquanto seletores distintos atualizam o progresso e o feedback apenas quando seus respectivos valores mudam. Falhas recuperáveis preservam e retomam a etapa interrompida, enquanto falhas permanentes encerram a sessão sem oferecer retry; em ambos os casos, a mensagem permanece no snapshot e é apresentada como uma região semântica dinâmica. O package Dart puro continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde deriva o progresso do status atual do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva da própria sessão o contador, o progresso, o feedback contextual e a ação permitida em cada etapa. Depois da coleta, o usuário pode submeter a receita, verificar a elegibilidade, criar o checkout remoto demonstrativo e confirmar o pagamento, sempre por operações do Cubit e sem acessar diretamente a máquina de estados ou os repositórios. O `BlocConsumer` reconstrói o conteúdo e executa a confirmação somente depois que a sessão emitida registra outro medicamento, enquanto seletores distintos atualizam o progresso e o feedback apenas quando seus respectivos valores mudam. Falhas recuperáveis preservam e retomam a etapa interrompida, enquanto falhas permanentes encerram a sessão sem oferecer retry; em ambos os casos, a mensagem permanece no snapshot e é apresentada como uma região semântica dinâmica. O package Dart puro continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
 - Todos os saldos, receitas, medicamentos, pagamentos, eventos e métricas serão fictícios.
 - Não haverá Pix real, dados pessoais, dados médicos reais ou OCR clínico.
-- O projeto terá marca própria e não alegará vínculo com a Omni Saúde.
+- O projeto terá marca própria e não alegará vínculo com empresas ou serviços reais.
 - O backend e as integrações externas existirão apenas para demonstração e aprendizado.
 
 ## Validação local
@@ -175,7 +182,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, 30 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado da sessão, feedback de falhas recuperáveis e permanentes e os 13 testes do `CheckoutCubit` —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, 28 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado da sessão, feedback de falhas recuperáveis e permanentes, submissão da receita, ações de avanço do fluxo e os testes do `CheckoutCubit` —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 

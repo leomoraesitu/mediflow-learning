@@ -4,7 +4,7 @@ Aplicativo Flutter Android principal do MediFlow Learning.
 
 ## Estado atual
 
-Até a Aula 21, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o progresso do checkout com identidade visual própria, responsividade e acessibilidade. A primeira etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual é um efeito reativo da sessão atualizada, e o indicador deriva somente a etapa e o rótulo relevantes para cada status.
+Até a Aula 24, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o progresso do checkout com identidade visual própria, responsividade e acessibilidade. A primeira etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual é um efeito reativo da sessão atualizada, seletores derivados apresentam progresso e falhas, e a interface oferece somente a ação compatível com a etapa atual até a confirmação do pagamento demonstrativo.
 
 A composição atual separa estado, apresentação e design system:
 
@@ -16,7 +16,8 @@ A composição atual separa estado, apresentação e design system:
 - `DemoPrescriptionRepository`, `DemoMedicationRepository` e `DemoCheckoutRepository` fornecem respostas locais e determinísticas aos contratos exigidos pelo Cubit;
 - `BlocConsumer<CheckoutCubit, CheckoutSession>` observa as emissões, reconstrói a região de conteúdo e executa efeitos pontuais da interface;
 - `BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>` seleciona somente a etapa e o rótulo usados pelo indicador de progresso;
-- `MedicationCounterContent` continua como `StatelessWidget` e recebe do `builder` o contador, os callbacks, os controllers e a chave do formulário;
+- um segundo `BlocSelector` observa somente o status e a mensagem necessários ao feedback de falha;
+- `MedicationCounterContent` continua como `StatelessWidget` e recebe do `builder` o contador, os callbacks disponíveis para o status atual, os controllers e a chave do formulário;
 - `CheckoutProgressIndicator` recebe do selector a etapa atual e o rótulo, além do total fixo de quatro etapas, para apresentar o progresso do checkout;
 - `AppTheme` centraliza o `ThemeData`, o Material 3 e o `ColorScheme` do aplicativo;
 - `AppSpacing` oferece uma escala compartilhada de espaçamentos;
@@ -25,6 +26,10 @@ A composição atual separa estado, apresentação e design system:
 O contador não possui mais estado independente no fluxo em execução. A ação de leitura cria um `Medication` sintético e usa `context.read<CheckoutCubit>()` para solicitar a transição sem assinar a página inteira às mudanças. `scanMedication` envia `MedicationScanned` à `CheckoutStateMachine`, que produz outro snapshot da sessão ainda em `collectingMedication`. Quando `emit()` publica essa sessão, o `builder` do `BlocConsumer` deriva o contador de `session.medications.length` e entrega o valor atualizado a `MedicationCounterContent`. O `listener` reage à mesma emissão para executar os efeitos que não pertencem à árvore declarativa. Os widgets visuais recuperam cores e tipografia do tema mais próximo com `Theme.of(context)`, sem depender diretamente de valores de marca espalhados pela interface.
 
 O `CheckoutCubit` atua como camada de coordenação entre o aplicativo e o domínio. Ele consulta os repositórios, converte resultados esperados do negócio em eventos de falha permanente, transforma falhas técnicas de criação e confirmação em falhas recuperáveis e delega a evolução da sessão à `CheckoutStateMachine`. A etapa interrompida e o identificador remoto são preservados para permitir retry sem recriar o pagamento. Depois de cada operação assíncrona, o Cubit verifica `isClosed` antes de emitir outro estado.
+
+Depois que ao menos um medicamento foi lido, `Validar compra` submete a referência da receita por `CheckoutCubit.submitPrescription()`. A ação permanece indisponível fora de `collectingMedication` ou quando a sessão ainda não contém medicamentos, e a validação do formulário impede referências vazias. Nas etapas seguintes, a tela apresenta apenas o botão pertinente ao estado: `Verificar elegibilidade` em `checkingEligibility`, `Criar pagamento` em `creatingPayment` e `Confirmar pagamento` em `awaitingConfirmation` com identificador remoto disponível. Cada callback solicita a operação ao Cubit, que coordena o repositório correspondente e entrega o resultado à máquina de estados.
+
+`DemoCheckoutRepository` mantém em memória o checkout criado e devolve `demo-checkout-001` como identificador determinístico. A confirmação consulta esse mesmo registro pela mesma instância do repositório e devolve um snapshot `paid`. O identificador isolado não recria o registro em memória; por isso a composição e os testes preservam a instância entre `createCheckout()` e `confirmPayment()`.
 
 `Navigator.push` adiciona uma `MaterialPageRoute<void>` à pilha para abrir `PharmacyModePage`. A seta criada automaticamente pela `AppBar` executa o retorno, remove essa rota e descarta seu objeto `State`. Como o `BlocProvider` pertence à composição dessa rota, o `CheckoutCubit` criado por ele também é encerrado. Ao abrir o fluxo novamente, outra sessão local é criada em `collectingMedication`, sem medicamentos.
 
@@ -51,6 +56,9 @@ Na camada de acessibilidade:
 - `checkout_cubit_test.dart` cobre o estado inicial, leitura de medicamento, validação e rejeição da receita, elegibilidade, criação, confirmação, falhas técnicas recuperáveis, retry e preservação do checkout remoto;
 - `checkout_ui_integration_test.dart` verifica que uma leitura válida atualiza `CheckoutSession.medications`, apresenta o contador derivado e que uma emissão direta do Cubit também dispara o `SnackBar` de confirmação;
 - `checkout_progress_selector_test.dart` cobre os mapeamentos das etapas 2, 3 e 4, o contexto de uma falha recuperável e a apresentação da seleção na interface;
+- `checkout_failure_feedback_test.dart` cobre o anúncio acessível de falhas, o retry recuperável e a ausência dessa ação em falhas permanentes;
+- `checkout_submission_ui_test.dart` verifica a submissão da receita pela interface e a indisponibilidade da ação enquanto o fluxo está incompleto;
+- `checkout_flow_actions_test.dart` verifica as ações de elegibilidade, criação do checkout remoto e confirmação do pagamento, incluindo as mudanças de etapa e a preservação do identificador remoto;
 - as verificações automatizadas complementam os testes manuais com tecnologias assistivas, sem substituí-los.
 
 Os logs de `initState`, `build` e `dispose` permitem observar o ciclo de vida durante o aprendizado. Os registros manuais dos estados `0`, `1` e `2` também demonstram que as emissões reconstruíram `MedicationCounterContent` pelo `BlocConsumer`, enquanto `PharmacyModePage` não precisou ser reconstruída a cada mudança do contador. O hot reload preserva o objeto `State`, o hot restart recria a aplicação e a remoção da rota executa `dispose` no estado da página.
@@ -82,7 +90,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 28 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação e progresso selecionado da sessão — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 28 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, submissão da receita e ações de avanço do checkout — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
 
 ## Referências oficiais
 
