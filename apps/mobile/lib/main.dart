@@ -145,6 +145,18 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     );
   }
 
+  Future<void> _submitPrescription() async {
+    final reference = _prescriptionController.text.trim();
+
+    if (reference.isEmpty) {
+      return;
+    }
+
+    await context.read<CheckoutCubit>().submitPrescription(
+      Prescription(reference: reference),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -235,6 +247,11 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                     eanController: _eanController,
                     formKey: _formKey,
                     onFillDemoEan: _fillDemoEan,
+                    onSubmit:
+                        session.status == CheckoutStatus.collectingMedication &&
+                            session.medications.isNotEmpty
+                        ? _submitPrescription
+                        : null,
                   );
                 },
               ),
@@ -262,6 +279,7 @@ class MedicationCounterContent extends StatelessWidget {
     required this.eanController,
     required this.formKey,
     required this.onFillDemoEan,
+    required this.onSubmit,
     super.key,
   });
 
@@ -271,6 +289,7 @@ class MedicationCounterContent extends StatelessWidget {
   final TextEditingController eanController;
   final GlobalKey<FormState> formKey;
   final VoidCallback onFillDemoEan;
+  final VoidCallback? onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -370,6 +389,11 @@ class MedicationCounterContent extends StatelessWidget {
             ElevatedButton(
               onPressed: onScan,
               child: const Text('Simular leitura'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ElevatedButton(
+              onPressed: onSubmit,
+              child: const Text('Validar compra'),
             ),
           ],
         ),
