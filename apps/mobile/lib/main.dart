@@ -252,6 +252,22 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                             session.medications.isNotEmpty
                         ? _submitPrescription
                         : null,
+                    onCheckEligibility:
+                        session.status == CheckoutStatus.checkingEligibility &&
+                            session.medications.isNotEmpty
+                        ? () => context.read<CheckoutCubit>().checkEligibility(
+                            session.medications.first,
+                          )
+                        : null,
+                    onCreateCheckout:
+                        session.status == CheckoutStatus.creatingPayment
+                        ? () => context.read<CheckoutCubit>().createCheckout()
+                        : null,
+                    onConfirmPayment:
+                        session.status == CheckoutStatus.awaitingConfirmation &&
+                            session.remoteCheckoutId != null
+                        ? () => context.read<CheckoutCubit>().confirmPayment()
+                        : null,
                   );
                 },
               ),
@@ -280,6 +296,9 @@ class MedicationCounterContent extends StatelessWidget {
     required this.formKey,
     required this.onFillDemoEan,
     required this.onSubmit,
+    required this.onCheckEligibility,
+    required this.onCreateCheckout,
+    required this.onConfirmPayment,
     super.key,
   });
 
@@ -290,6 +309,9 @@ class MedicationCounterContent extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final VoidCallback onFillDemoEan;
   final VoidCallback? onSubmit;
+  final VoidCallback? onCheckEligibility;
+  final VoidCallback? onCreateCheckout;
+  final VoidCallback? onConfirmPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -395,6 +417,27 @@ class MedicationCounterContent extends StatelessWidget {
               onPressed: onSubmit,
               child: const Text('Validar compra'),
             ),
+            if (onCheckEligibility != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ElevatedButton(
+                onPressed: onCheckEligibility,
+                child: const Text('Verificar elegibilidade'),
+              ),
+            ],
+            if (onCreateCheckout != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ElevatedButton(
+                onPressed: onCreateCheckout,
+                child: const Text('Criar pagamento'),
+              ),
+            ],
+            if (onConfirmPayment != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ElevatedButton(
+                onPressed: onConfirmPayment,
+                child: const Text('Confirmar pagamento'),
+              ),
+            ],
           ],
         ),
       ),
