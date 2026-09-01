@@ -174,6 +174,43 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                 );
               },
             ),
+            BlocSelector<
+              CheckoutCubit,
+              CheckoutSession,
+              ({CheckoutStatus status, String? message})
+            >(
+              selector: (session) =>
+                  (status: session.status, message: session.statusMessage),
+              builder: (context, feedback) {
+                if (feedback.message == null) {
+                  return const SizedBox.shrink();
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(feedback.message!),
+                      ),
+                      if (feedback.status ==
+                          CheckoutStatus.recoverableFailure) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        ElevatedButton(
+                          onPressed: () =>
+                              context.read<CheckoutCubit>().retry(),
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
             Expanded(
               child: BlocConsumer<CheckoutCubit, CheckoutSession>(
                 listenWhen: (previous, current) {
