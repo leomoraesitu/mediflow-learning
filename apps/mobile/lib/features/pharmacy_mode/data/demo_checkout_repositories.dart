@@ -41,8 +41,7 @@ final class DemoCheckoutRepository implements CheckoutRepository {
   Future<CheckoutSession> getById(String remoteCheckoutId) async {
     final checkout = _checkout;
 
-    if (checkout == null ||
-        checkout.remoteCheckoutId != remoteCheckoutId) {
+    if (checkout == null || checkout.remoteCheckoutId != remoteCheckoutId) {
       throw StateError('Checkout demonstrativo não encontrado.');
     }
 
