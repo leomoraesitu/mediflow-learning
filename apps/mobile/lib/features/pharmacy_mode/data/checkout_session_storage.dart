@@ -8,8 +8,7 @@ abstract interface class CheckoutSessionStorage {
   Future<void> clear();
 }
 
-final class InMemoryCheckoutSessionStorage
-    implements CheckoutSessionStorage {
+final class InMemoryCheckoutSessionStorage implements CheckoutSessionStorage {
   Map<String, Object?>? _storedMap;
 
   @override

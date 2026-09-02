@@ -34,52 +34,52 @@ void main() {
     });
 
     blocTest<CheckoutCubit, CheckoutSession>(
-  'adds a scanned medication to the checkout session',
-  build: () => CheckoutCubit(
-    initialSession: CheckoutSession(
-      id: 'session-001',
-      availableBalanceInCents: 25000,
-      prescription: null,
-      medications: [],
-      status: CheckoutStatus.collectingMedication,
-    ),
-    stateMachine: const CheckoutStateMachine(),
-    prescriptionRepository: const _FakePrescriptionRepository(
-      validationResult: true,
-    ),
-    medicationRepository: const _FakeMedicationRepository(
-      eligibilityResult: true,
-    ),
-    checkoutRepository: const _FakeCheckoutRepository(
-      createdCheckoutId: 'remote-checkout-001',
-    ),
-  ),
-  act: (cubit) => cubit.scanMedication(
-    const Medication(
-      ean: '7891000000011',
-      name: 'Medicamento demonstrativo',
-      unitPriceInCents: 2500,
-    ),
-  ),
-  expect: () => [
-    isA<CheckoutSession>()
-        .having(
-          (session) => session.status,
-          'status',
-          CheckoutStatus.collectingMedication,
-        )
-        .having(
-          (session) => session.medications.length,
-          'medications length',
-          1,
-        )
-        .having(
-          (session) => session.medications.single.ean,
-          'medication EAN',
-          '7891000000011',
+      'adds a scanned medication to the checkout session',
+      build: () => CheckoutCubit(
+        initialSession: CheckoutSession(
+          id: 'session-001',
+          availableBalanceInCents: 25000,
+          prescription: null,
+          medications: [],
+          status: CheckoutStatus.collectingMedication,
         ),
-  ],
-);
+        stateMachine: const CheckoutStateMachine(),
+        prescriptionRepository: const _FakePrescriptionRepository(
+          validationResult: true,
+        ),
+        medicationRepository: const _FakeMedicationRepository(
+          eligibilityResult: true,
+        ),
+        checkoutRepository: const _FakeCheckoutRepository(
+          createdCheckoutId: 'remote-checkout-001',
+        ),
+      ),
+      act: (cubit) => cubit.scanMedication(
+        const Medication(
+          ean: '7891000000011',
+          name: 'Medicamento demonstrativo',
+          unitPriceInCents: 2500,
+        ),
+      ),
+      expect: () => [
+        isA<CheckoutSession>()
+            .having(
+              (session) => session.status,
+              'status',
+              CheckoutStatus.collectingMedication,
+            )
+            .having(
+              (session) => session.medications.length,
+              'medications length',
+              1,
+            )
+            .having(
+              (session) => session.medications.single.ean,
+              'medication EAN',
+              '7891000000011',
+            ),
+      ],
+    );
 
     blocTest<CheckoutCubit, CheckoutSession>(
       'submitPrescription',

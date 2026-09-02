@@ -6,11 +6,35 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../data/checkout_session_storage.dart';
+import '../data/checkout_session_snapshot.dart';
+
 final class CheckoutCubit extends Cubit<CheckoutSession> {
   final CheckoutStateMachine _stateMachine;
   final PrescriptionRepository _prescriptionRepository;
   final MedicationRepository _medicationRepository;
   final CheckoutRepository _checkoutRepository;
+  final CheckoutSessionStorage? _storage;
+
+  static Future<CheckoutCubit> restore({
+    required CheckoutSession fallbackSession,
+    required CheckoutSessionStorage storage,
+    required CheckoutStateMachine stateMachine,
+    required PrescriptionRepository prescriptionRepository,
+    required MedicationRepository medicationRepository,
+    required CheckoutRepository checkoutRepository,
+  }) async {
+    final snapshot = await storage.load();
+
+    return CheckoutCubit(
+      initialSession: snapshot?.toDomain() ?? fallbackSession,
+      stateMachine: stateMachine,
+      prescriptionRepository: prescriptionRepository,
+      medicationRepository: medicationRepository,
+      checkoutRepository: checkoutRepository,
+      storage: storage,
+    );
+  }
 
   CheckoutCubit({
     required CheckoutSession initialSession,
@@ -18,35 +42,47 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     required PrescriptionRepository prescriptionRepository,
     required MedicationRepository medicationRepository,
     required CheckoutRepository checkoutRepository,
+    CheckoutSessionStorage? storage,
   }) : _stateMachine = stateMachine,
        _prescriptionRepository = prescriptionRepository,
        _medicationRepository = medicationRepository,
        _checkoutRepository = checkoutRepository,
+       _storage = storage,
        super(initialSession);
 
-  void scanMedication(Medication medication) {
-    emit(
-      _stateMachine.transition(
-        session: state,
-        event: MedicationScanned(medication: medication),
-      ),
+  Future<void> _emitPersisted(CheckoutSession session) async {
+    emit(session);
+
+    final storage = _storage;
+
+    if (storage != null) {
+      await storage.save(CheckoutSessionSnapshot.fromDomain(session));
+    }
+  }
+
+  Future<void> scanMedication(Medication medication) async {
+    final nextSession = _stateMachine.transition(
+      session: state,
+      event: MedicationScanned(medication: medication),
     );
+
+    await _emitPersisted(nextSession);
   }
 
   Future<void> submitPrescription(Prescription prescription) async {
-    emit(
-      _stateMachine.transition(
-        session: state,
-        event: PrescriptionSubmitted(prescription: prescription),
-      ),
+    final nextSession = _stateMachine.transition(
+      session: state,
+      event: PrescriptionSubmitted(prescription: prescription),
     );
+
+    await _emitPersisted(nextSession);
 
     final isValid = await _prescriptionRepository.validate(prescription);
 
     if (isClosed) return;
 
     if (!isValid) {
-      emit(
+      await _emitPersisted(
         _stateMachine.transition(
           session: state,
           event: const CheckoutFailed(
@@ -58,7 +94,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
       return;
     }
 
-    emit(
+    await _emitPersisted(
       _stateMachine.transition(
         session: state,
         event: const PrescriptionValidated(),
@@ -72,7 +108,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     if (isClosed) return;
 
     if (!isEligible) {
-      emit(
+      await _emitPersisted(
         _stateMachine.transition(
           session: state,
           event: const CheckoutFailed(
@@ -84,7 +120,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
       return;
     }
 
-    emit(
+    await _emitPersisted(
       _stateMachine.transition(
         session: state,
         event: const EligibilityConfirmed(),
@@ -100,7 +136,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     } on Exception {
       if (isClosed) return;
 
-      emit(
+      await _emitPersisted(
         _stateMachine.transition(
           session: state,
           event: const CheckoutFailed(
@@ -114,7 +150,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
     if (isClosed) return;
 
-    emit(
+    await _emitPersisted(
       _stateMachine.transition(
         session: state,
         event: PaymentCreated(remoteCheckoutId: remoteCheckoutId),
@@ -134,7 +170,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     } on Exception {
       if (isClosed) return;
 
-      emit(
+      await _emitPersisted(
         _stateMachine.transition(
           session: state,
           event: const CheckoutFailed(
@@ -148,13 +184,13 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
     if (isClosed || remoteCheckout.status != CheckoutStatus.paid) return;
 
-    emit(
+    await _emitPersisted(
       _stateMachine.transition(session: state, event: const PaymentConfirmed()),
     );
   }
 
-  void retry() {
-    emit(
+  Future<void> retry() async {
+    await _emitPersisted(
       _stateMachine.transition(session: state, event: const RetryRequested()),
     );
   }
