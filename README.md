@@ -46,7 +46,7 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-Até a Aula 25, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão, os feedbacks de falha e sucesso e as ações de avanço do checkout foram criados:
+Até a Aula 26, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão, os feedbacks de falha e sucesso, as ações de avanço do checkout e a representação serializável da sessão foram criados:
 
 - repositório e branch de trabalho configurados;
 - diretórios de mobile, painel, domínio, backend e documentação definidos;
@@ -154,9 +154,15 @@ Até a Aula 25, a infraestrutura inicial do monorepo, a primeira interação com
 - confirmação de sucesso exposta como região semântica dinâmica com `Semantics(liveRegion: true)` para anúncio por tecnologias assistivas;
 - ações de avanço removidas depois da conclusão, mantendo a interface coerente com o estado terminal;
 - teste de widget cobrindo o feedback de sucesso, o identificador remoto, a ausência da ação de confirmação e a semântica dinâmica;
-- suíte mobile validada com 36 testes aprovados.
+- `CheckoutSessionSnapshot` criado na camada `data` do aplicativo como representação serializável de `CheckoutSession`, sem acoplar o domínio a JSON ou persistência;
+- conversões `fromDomain` e `toDomain` preservando a sessão de domínio, enquanto `toMap` e `fromMap` delimitam a representação formada somente por valores compatíveis com JSON;
+- receita, medicamentos, saldo, status, `remoteCheckoutId`, `retryTargetStatus` e `statusMessage` preservados na serialização e na reconstrução da sessão;
+- nomes dos valores de `CheckoutStatus` gravados como `String` e reconstruídos com `byName`, tornando explícita a necessidade futura de versionamento ou migração caso o esquema seja alterado;
+- lista de medicamentos do snapshot protegida por cópia não modificável com `List.unmodifiable`;
+- três testes cobrindo serialização para mapa, reconstrução do domínio e round-trip completo `CheckoutSession → Map → JSON → Map → CheckoutSession`;
+- suíte mobile validada com 39 testes aprovados.
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde deriva o progresso do status atual do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva da própria sessão o contador, o progresso, o feedback contextual e a ação permitida em cada etapa. Depois da coleta, o usuário pode submeter a receita, verificar a elegibilidade, criar o checkout remoto demonstrativo e confirmar o pagamento, sempre por operações do Cubit e sem acessar diretamente a máquina de estados ou os repositórios. O `BlocConsumer` reconstrói o conteúdo e executa a confirmação somente depois que a sessão emitida registra outro medicamento, enquanto seletores distintos atualizam o progresso e o feedback apenas quando seus respectivos valores mudam. Falhas recuperáveis preservam e retomam a etapa interrompida, enquanto falhas permanentes encerram a sessão sem oferecer retry; em ambos os casos, a mensagem permanece no snapshot e é apresentada como uma região semântica dinâmica. Quando a sessão chega a `paid`, a tela apresenta uma confirmação acessível com o identificador do checkout concluído e remove as ações de avanço desse estado terminal. O package Dart puro continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e não contém elegibilidade real, persistência, pagamentos ou integrações externas.
+O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde deriva o progresso do status atual do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva da própria sessão o contador, o progresso, o feedback contextual e a ação permitida em cada etapa. Depois da coleta, o usuário pode submeter a receita, verificar a elegibilidade, criar o checkout remoto demonstrativo e confirmar o pagamento, sempre por operações do Cubit e sem acessar diretamente a máquina de estados ou os repositórios. O `BlocConsumer` reconstrói o conteúdo e executa a confirmação somente depois que a sessão emitida registra outro medicamento, enquanto seletores distintos atualizam o progresso e o feedback apenas quando seus respectivos valores mudam. Falhas recuperáveis preservam e retomam a etapa interrompida, enquanto falhas permanentes encerram a sessão sem oferecer retry; em ambos os casos, a mensagem permanece no snapshot e é apresentada como uma região semântica dinâmica. Quando a sessão chega a `paid`, a tela apresenta uma confirmação acessível com o identificador do checkout concluído e remove as ações de avanço desse estado terminal. A camada `data` já consegue transformar a sessão completa em uma representação compatível com JSON e reconstruí-la sem levar detalhes de serialização para o package Dart puro, que continua concentrando os modelos, os estados, o contexto de recuperação, as transições válidas e as abstrações necessárias para acessar receita, medicamento e checkout remoto. O fluxo permanece exclusivamente educacional e ainda não grava o snapshot em armazenamento persistente nem contém elegibilidade real, pagamentos ou integrações externas.
 
 ## Limites do projeto
 
@@ -186,7 +192,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, 36 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado da sessão, feedback de falhas recuperáveis e permanentes, feedback acessível de checkout concluído, submissão da receita, ações de avanço do fluxo e os testes do `CheckoutCubit` —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é análise estática sem problemas, 39 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado da sessão, feedback de falhas recuperáveis e permanentes, feedback acessível de checkout concluído, submissão da receita, ações de avanço do fluxo, os testes do `CheckoutCubit` e o round-trip JSON de `CheckoutSessionSnapshot` —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
 
 ## Referências oficiais
 
@@ -218,6 +224,7 @@ O resultado esperado é análise estática sem problemas, 36 testes mobile aprov
 - [Localizar widgets em testes](https://docs.flutter.dev/cookbook/testing/widget/finders)
 - [Modificadores de classes em Dart](https://dart.dev/language/class-modifiers)
 - [Enums em Dart](https://dart.dev/language/enums)
+- [`dart:convert`](https://api.dart.dev/dart-convert/)
 - [Branches em Dart](https://dart.dev/language/branches)
 - [Patterns em Dart](https://dart.dev/language/patterns)
 - [Tratamento de erros em Dart](https://dart.dev/language/error-handling)
