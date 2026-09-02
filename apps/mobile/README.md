@@ -4,7 +4,7 @@ Aplicativo Flutter Android principal do MediFlow Learning.
 
 ## Estado atual
 
-Até a Aula 27, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o progresso do checkout com identidade visual própria, responsividade e acessibilidade. A primeira etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual é um efeito reativo da sessão atualizada, seletores derivados apresentam progresso e feedback contextual, e a interface oferece somente a ação compatível com a etapa atual até apresentar a conclusão acessível do pagamento demonstrativo. A camada `data` fornece a representação serializável da sessão completa e um contrato assíncrono de armazenamento com uma implementação substituível em memória, sem acoplar o domínio a JSON ou persistência.
+Até a Aula 28, a aplicação passou a iniciar em uma tela de benefícios com saldo fictício e a navegar para o “Modo Farmácia”, que apresenta o progresso do checkout com identidade visual própria, responsividade e acessibilidade. A primeira etapa recebe uma referência de receita e um EAN fictícios, valida os dados e somente então permite simular a leitura do medicamento. `CheckoutCubit` é a fonte de verdade do fluxo em execução: ele mantém a `CheckoutSession`, coordena os contratos de repositório e delega as transições à máquina de estados do domínio. A confirmação visual é um efeito reativo da sessão atualizada, seletores derivados apresentam progresso e feedback contextual, e a interface oferece somente a ação compatível com a etapa atual até apresentar a conclusão acessível do pagamento demonstrativo. A camada `data` fornece a representação serializável da sessão completa, um contrato assíncrono de armazenamento e implementações substituíveis em memória e SQLite com Drift, sem acoplar o domínio a JSON ou persistência.
 
 A composição atual separa estado, apresentação e design system:
 
@@ -14,7 +14,8 @@ A composição atual separa estado, apresentação e design system:
 - `_PharmacyModePageState` mantém a `GlobalKey<FormState>` e os controllers da receita e do EAN durante o ciclo de vida da rota, mas não armazena mais o contador;
 - `CheckoutCubit` mantém `CheckoutSession` como snapshot do fluxo, coordena os contratos de repositório e delega todas as transições para `CheckoutStateMachine`;
 - `CheckoutSessionSnapshot` converte a sessão entre o domínio e uma representação formada por mapas, listas e valores compatíveis com JSON;
-- `CheckoutSessionStorage` define as operações assíncronas `save`, `load` e `clear`, enquanto `InMemoryCheckoutSessionStorage` oferece a implementação local usada nesta etapa;
+- `CheckoutSessionStorage` define as operações assíncronas `save`, `load` e `clear`; `InMemoryCheckoutSessionStorage` e `DriftCheckoutSessionStorage` oferecem implementações substituíveis;
+- `CheckoutDatabase` concentra o schema Drift e permite abrir SQLite em memória nos testes ou `mediflow_checkout.sqlite` no dispositivo;
 - `DemoPrescriptionRepository`, `DemoMedicationRepository` e `DemoCheckoutRepository` fornecem respostas locais e determinísticas aos contratos exigidos pelo Cubit;
 - `BlocConsumer<CheckoutCubit, CheckoutSession>` observa as emissões, reconstrói a região de conteúdo e executa efeitos pontuais da interface;
 - `BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>` seleciona somente a etapa e o rótulo usados pelo indicador de progresso;
@@ -34,6 +35,10 @@ O `CheckoutCubit` atua como camada de coordenação entre o aplicativo e o domí
 O teste de round-trip passa a sessão por `Map`, `jsonEncode`, `jsonDecode` e novamente pelo snapshot antes de reconstruir o domínio. Esse teste comprova que os valores usados atualmente são compatíveis com JSON e preservam o contexto completo da sessão, mas ainda não representa escrita em disco, banco de dados, tratamento de mapas corrompidos ou migração entre versões do esquema.
 
 `CheckoutSessionStorage` separa o aplicativo da tecnologia que armazenará o snapshot. O contrato é assíncrono desde a primeira implementação para que consumidores possam receber futuramente uma versão baseada em I/O sem mudar sua própria API. `InMemoryCheckoutSessionStorage` guarda o mapa produzido por `toMap`, devolve outro snapshot reconstruído por `fromMap` e usa `null` para representar tanto o armazenamento inicial vazio quanto o estado posterior a `clear`. Como essa implementação vive somente na memória do processo, ela não restaura a sessão depois que o aplicativo é encerrado.
+
+`CheckoutDatabase` introduz o schema SQLite com Drift. A tabela `CheckoutSessionRecords` possui um registro único identificado por `id = 1` e armazena o snapshot completo na coluna textual `payload`. `insertOnConflictUpdate` cria o registro inicial ou substitui o snapshot anterior, mantendo somente o estado mais recente. O schema começa na versão 1; alterações estruturais futuras deverão incrementar `schemaVersion` e definir a migração correspondente.
+
+`DriftCheckoutSessionStorage` implementa o contrato convertendo `CheckoutSessionSnapshot` em mapa e JSON antes da escrita e realizando o caminho inverso durante a leitura. `CheckoutDatabase(super.executor)` preserva a injeção de SQLite em memória nos testes, enquanto `CheckoutDatabase.defaults()` usa `driftDatabase` para abrir ou criar `mediflow_checkout.sqlite` no armazenamento do aplicativo. Essa infraestrutura persistente já pode ser composta pelo aplicativo, mas o fluxo atual ainda não conecta `save` e `load` ao ciclo de emissões e inicialização do `CheckoutCubit`.
 
 Depois que ao menos um medicamento foi lido, `Validar compra` submete a referência da receita por `CheckoutCubit.submitPrescription()`. A ação permanece indisponível fora de `collectingMedication` ou quando a sessão ainda não contém medicamentos, e a validação do formulário impede referências vazias. Nas etapas seguintes, a tela apresenta apenas o botão pertinente ao estado: `Verificar elegibilidade` em `checkingEligibility`, `Criar pagamento` em `creatingPayment` e `Confirmar pagamento` em `awaitingConfirmation` com identificador remoto disponível. Cada callback solicita a operação ao Cubit, que coordena o repositório correspondente e entrega o resultado à máquina de estados.
 
@@ -73,11 +78,13 @@ Na camada de acessibilidade:
 - `checkout_success_feedback_test.dart` verifica o título e o identificador do checkout concluído, a ausência da ação de confirmação e o anúncio semântico dinâmico do sucesso;
 - `checkout_session_snapshot_test.dart` verifica a serialização para mapa, a reconstrução da sessão e o round-trip completo por JSON;
 - `checkout_session_storage_test.dart` verifica armazenamento vazio, preservação do snapshot entre `save` e `load` e remoção dos dados por `clear`;
+- `checkout_database_test.dart` verifica banco vazio, substituição do registro único e remoção do snapshot usando SQLite em memória;
+- `drift_checkout_session_storage_test.dart` verifica o ciclo de `save`, `load` e `clear` pelo adapter Drift;
 - as verificações automatizadas complementam os testes manuais com tecnologias assistivas, sem substituí-los.
 
 Os logs de `initState`, `build` e `dispose` permitem observar o ciclo de vida durante o aprendizado. Os registros manuais dos estados `0`, `1` e `2` também demonstram que as emissões reconstruíram `MedicationCounterContent` pelo `BlocConsumer`, enquanto `PharmacyModePage` não precisou ser reconstruída a cada mudança do contador. O hot reload preserva o objeto `State`, o hot restart recria a aplicação e a remoção da rota executa `dispose` no estado da página.
 
-O fluxo permanece local e sintético. Os repositórios demonstrativos permitem compor e exercitar `CheckoutCubit` sem infraestrutura externa, enquanto o snapshot e o armazenamento em memória comprovam a conversão serializável e o contrato assíncrono substituível. Ainda não há comunicação HTTP, armazenamento em disco, restauração após reiniciar o processo, cache, migrações de esquema, timeouts reais, pagamento ou integrações externas, que serão introduzidos em aulas posteriores.
+O fluxo permanece local e sintético. Os repositórios demonstrativos permitem compor e exercitar `CheckoutCubit` sem infraestrutura externa, enquanto o snapshot e as duas implementações de armazenamento comprovam a fronteira serializável e substituível. O adapter Drift oferece escrita em disco, mas ainda não participa da composição do fluxo nem restaura automaticamente a sessão depois que o aplicativo é reiniciado. Também não há comunicação HTTP, cache, migrações de esquema além da versão inicial, timeouts reais, pagamento ou integrações externas, que serão introduzidos em aulas posteriores.
 
 ## Execução
 
@@ -104,7 +111,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 42 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot e o armazenamento assíncrono em memória — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 48 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift e o adapter SQLite — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`.
 
 ## Referências oficiais
 
@@ -139,3 +146,5 @@ O resultado esperado é formatação limpa, análise estática sem problemas, 42
 - [Records em Dart](https://dart.dev/language/records)
 - [`dart:convert`](https://api.dart.dev/dart-convert/)
 - [`List.unmodifiable`](https://api.dart.dev/dart-core/List/List.unmodifiable.html)
+- [Documentação do Drift](https://drift.simonbinder.eu/)
+- [`drift_flutter`](https://pub.dev/packages/drift_flutter)
