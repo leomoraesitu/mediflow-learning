@@ -189,11 +189,42 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
             BlocSelector<
               CheckoutCubit,
               CheckoutSession,
-              ({CheckoutStatus status, String? message})
+              ({
+                CheckoutStatus status,
+                String? message,
+                String? remoteCheckoutId,
+              })
             >(
-              selector: (session) =>
-                  (status: session.status, message: session.statusMessage),
+              selector: (session) => (
+                status: session.status,
+                message: session.statusMessage,
+                remoteCheckoutId: session.remoteCheckoutId,
+              ),
               builder: (context, feedback) {
+                if (feedback.status == CheckoutStatus.paid &&
+                    feedback.remoteCheckoutId != null) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            'Pagamento confirmado',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Checkout ${feedback.remoteCheckoutId} concluído.',
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 if (feedback.message == null) {
                   return const SizedBox.shrink();
                 }
