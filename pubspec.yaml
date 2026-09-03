@@ -7,3 +7,5 @@ environment:
 workspace:
   - apps/mobile
   - packages/checkout_domain
+dependencies:
+  dio: ^5.11.0
