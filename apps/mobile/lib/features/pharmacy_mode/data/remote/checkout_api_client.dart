@@ -19,9 +19,14 @@ final class CheckoutApiClient {
   Future<Map<String, dynamic>> post(
     String path, {
     required Map<String, dynamic> data,
+    Map<String, dynamic>? headers,
   }) async {
     try {
-      final response = await _dio.post(path, data: data);
+      final response = await _dio.post(
+        path,
+        data: data,
+        options: Options(headers: headers),
+      );
 
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {

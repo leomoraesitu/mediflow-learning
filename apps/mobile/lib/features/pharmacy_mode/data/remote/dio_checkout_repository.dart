@@ -25,6 +25,7 @@ final class DioCheckoutRepository implements CheckoutRepository {
             },
         ],
       },
+      headers: {'Idempotency-Key': session.idempotencyKey},
     );
 
     final remoteCheckoutId = response['id'] as String?;

@@ -8,6 +8,9 @@ environment:
 
 resolution: workspace
 
+dependencies:
+  uuid: ^4.6.0
+
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6

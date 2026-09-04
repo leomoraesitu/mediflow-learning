@@ -149,4 +149,31 @@ void main() {
       throwsA(isA<PermanentFailure>()),
     );
   });
+  test(
+    'sends the session idempotency key as a header when creating a checkout',
+    () async {
+      fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+
+      final sessionWithIdempotencyKey = CheckoutSession(
+        id: 'session-id',
+        availableBalanceInCents: 1000,
+        prescription: null,
+        medications: [],
+        status: CheckoutStatus.paid,
+        idempotencyKey: 'unique-key',
+      );
+
+      await repository.create(sessionWithIdempotencyKey);
+
+      final requestOptions = fakeAdapter.capturedHeaders['/checkouts'];
+      expect(requestOptions, isNotNull);
+      expect(requestOptions!['Idempotency-Key'], 'unique-key');
+    },
+  );
 }
