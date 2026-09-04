@@ -27,4 +27,14 @@ final class CheckoutApiClient {
       throw Exception('Erro ao fazer requisição POST para $path: ${e.message}');
     }
   }
+
+  Future<Map<String, dynamic>> get(String path) async {
+    try {
+      final response = await _dio.get(path);
+
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception('Erro ao fazer requisição GET para $path: ${e.message}');
+    }
+  }
 }

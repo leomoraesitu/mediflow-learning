@@ -1,24 +1,23 @@
-import 'dart:typed_data';
-
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_prescription_repository.dart';
 
+import 'fake_http_client_adapter.dart';
+
 void main() {
   late Dio dio;
-  late _FakeHttpClientAdapter fakeAdapter;
+  late FakeHttpClientAdapter fakeAdapter;
   late CheckoutApiClient apiClient;
   late DioPrescriptionRepository repository;
   late Prescription prescription;
 
   setUp(() {
-    fakeAdapter = _FakeHttpClientAdapter();
+    fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
       ..httpClientAdapter = fakeAdapter;
 
-    // Inicialização das dependências no setUp
     apiClient = CheckoutApiClient(dio: dio);
     repository = DioPrescriptionRepository(apiClient: apiClient);
     prescription = Prescription(reference: 'some-prescription');
@@ -27,7 +26,7 @@ void main() {
   test(
     'returns true when the API confirms the prescription is valid',
     () async {
-      fakeAdapter._mockedResponses['/prescriptions/validate'] =
+      fakeAdapter.mockedResponses['/prescriptions/validate'] =
           ResponseBody.fromString(
             '{"isValid": true}',
             200,
@@ -43,7 +42,7 @@ void main() {
   test(
     'returns false when the API confirms the prescription is invalid',
     () async {
-      fakeAdapter._mockedResponses['/prescriptions/validate'] =
+      fakeAdapter.mockedResponses['/prescriptions/validate'] =
           ResponseBody.fromString(
             '{"isValid": false}',
             200,
@@ -58,7 +57,7 @@ void main() {
   test(
     'throws an exception when the API responds with a server error',
     () async {
-      fakeAdapter._mockedResponses['/prescriptions/validate'] =
+      fakeAdapter.mockedResponses['/prescriptions/validate'] =
           ResponseBody.fromString(
             'Internal Server Error',
             500,
@@ -76,7 +75,7 @@ void main() {
   test(
     'throws an exception when the response body is missing isValid',
     () async {
-      fakeAdapter._mockedResponses['/prescriptions/validate'] =
+      fakeAdapter.mockedResponses['/prescriptions/validate'] =
           ResponseBody.fromString(
             '{"someOtherField": true}',
             200,
@@ -91,24 +90,4 @@ void main() {
       );
     },
   );
-}
-
-final class _FakeHttpClientAdapter implements HttpClientAdapter {
-  final Map<String, ResponseBody> _mockedResponses = {};
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    final response = _mockedResponses[options.path];
-    if (response != null) {
-      return response;
-    }
-    throw Exception('No mocked response found for path: ${options.path}');
-  }
-
-  @override
-  void close({bool force = false}) {}
 }
