@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 import 'checkout_event.dart';
 import 'checkout_session.dart';
 import 'checkout_status.dart';
@@ -20,6 +22,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: session.retryTargetStatus,
         statusMessage: session.statusMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (session.status == CheckoutStatus.collectingMedication &&
@@ -33,6 +36,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: session.retryTargetStatus,
         statusMessage: session.statusMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (session.status == CheckoutStatus.validatingPrescription &&
@@ -46,6 +50,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: session.retryTargetStatus,
         statusMessage: session.statusMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (session.status == CheckoutStatus.checkingEligibility &&
@@ -59,6 +64,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: session.retryTargetStatus,
         statusMessage: session.statusMessage,
+        idempotencyKey: const Uuid().v4(),
       );
     }
     if (session.status == CheckoutStatus.creatingPayment &&
@@ -72,6 +78,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: event.remoteCheckoutId,
         retryTargetStatus: session.retryTargetStatus,
         statusMessage: session.statusMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     final canAcceptPaymentConfirmation =
@@ -90,6 +97,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: null,
         statusMessage: null,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (!session.status.isTerminal && event is MaintenanceDetected) {
@@ -102,6 +110,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: null,
         statusMessage: event.message,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (!session.status.isTerminal &&
@@ -117,6 +126,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: session.status,
         statusMessage: event.errorMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     final retryTargetStatus = session.retryTargetStatus;
@@ -132,6 +142,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: null,
         statusMessage: null,
+        idempotencyKey: session.idempotencyKey,
       );
     }
     if (!session.status.isTerminal &&
@@ -146,6 +157,7 @@ final class CheckoutStateMachine {
         remoteCheckoutId: session.remoteCheckoutId,
         retryTargetStatus: null,
         statusMessage: event.errorMessage,
+        idempotencyKey: session.idempotencyKey,
       );
     }
 

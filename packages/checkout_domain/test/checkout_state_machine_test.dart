@@ -318,5 +318,59 @@ void main() {
       expect(session.retryTargetStatus, CheckoutStatus.awaitingConfirmation);
       expect(session.statusMessage, 'Conexão perdida durante a confirmação.');
     });
+    test('generates an idempotency key when eligibility is confirmed', () {
+      const medication = Medication(
+        ean: 'EAN-999',
+        name: 'Medication 999',
+        unitPriceInCents: 99,
+      );
+
+      const prescription = Prescription(reference: 'Teste');
+
+      final session = CheckoutSession(
+        id: 'session-01',
+        availableBalanceInCents: 10000,
+        prescription: prescription,
+        medications: [medication],
+        status: CheckoutStatus.checkingEligibility,
+      );
+      final result = const CheckoutStateMachine().transition(
+        session: session,
+        event: const EligibilityConfirmed(),
+      );
+      expect(result, isNot(same(session)));
+      expect(result.status, CheckoutStatus.creatingPayment);
+      expect(result.idempotencyKey, isNot(session.idempotencyKey));
+    });
+    test(
+      'keeps the same idempotency key when retrying after recoverable failure',
+      () {
+        const medication = Medication(
+          ean: 'EAN-999',
+          name: 'Medication 999',
+          unitPriceInCents: 99,
+        );
+
+        const prescription = Prescription(reference: 'Teste');
+
+        final session = CheckoutSession(
+          id: 'session-01',
+          availableBalanceInCents: 10000,
+          prescription: prescription,
+          medications: [medication],
+          status: CheckoutStatus.recoverableFailure,
+          retryTargetStatus: CheckoutStatus.awaitingConfirmation,
+          remoteCheckoutId: 'CheckoutId-01',
+          idempotencyKey: 'IdempotencyKey-01',
+        );
+        final result = const CheckoutStateMachine().transition(
+          session: session,
+          event: const RetryRequested(),
+        );
+        expect(result, isNot(same(session)));
+        expect(result.status, CheckoutStatus.awaitingConfirmation);
+        expect(result.idempotencyKey, session.idempotencyKey);
+      },
+    );
   });
 }

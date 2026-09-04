@@ -11,6 +11,7 @@ final class CheckoutSession {
   final String? remoteCheckoutId;
   final CheckoutStatus? retryTargetStatus;
   final String? statusMessage;
+  final String? idempotencyKey;
 
   CheckoutSession({
     required this.id,
@@ -21,5 +22,6 @@ final class CheckoutSession {
     this.remoteCheckoutId,
     this.retryTargetStatus,
     this.statusMessage,
+    this.idempotencyKey,
   }) : medications = List.unmodifiable(medications);
 }

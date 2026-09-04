@@ -21,6 +21,7 @@ void main() {
       remoteCheckoutId: 'remote-01',
       retryTargetStatus: CheckoutStatus.awaitingConfirmation,
       statusMessage: 'Falha ao confirmar o checkout.',
+      idempotencyKey: null,
     );
 
     final map = CheckoutSessionSnapshot.fromDomain(session).toMap();
@@ -40,6 +41,7 @@ void main() {
       'remoteCheckoutId': 'remote-01',
       'retryTargetStatus': 'awaitingConfirmation',
       'statusMessage': 'Falha ao confirmar o checkout.',
+      'idempotencyKey': null,
     });
   });
 
@@ -59,6 +61,7 @@ void main() {
       'remoteCheckoutId': 'remote-01',
       'retryTargetStatus': 'awaitingConfirmation',
       'statusMessage': 'Falha ao confirmar o checkout.',
+      'idempotencyKey': null,
     });
 
     final session = snapshot.toDomain();
@@ -90,6 +93,7 @@ void main() {
       ],
       status: CheckoutStatus.awaitingConfirmation,
       remoteCheckoutId: 'remote-02',
+      idempotencyKey: null,
     );
 
     final encoded = jsonEncode(

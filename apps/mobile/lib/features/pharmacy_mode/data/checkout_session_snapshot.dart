@@ -9,6 +9,7 @@ final class CheckoutSessionSnapshot {
   final String? remoteCheckoutId;
   final CheckoutStatus? retryTargetStatus;
   final String? statusMessage;
+  final String? idempotencyKey;
 
   CheckoutSessionSnapshot._({
     required this.id,
@@ -19,6 +20,7 @@ final class CheckoutSessionSnapshot {
     required this.remoteCheckoutId,
     required this.retryTargetStatus,
     required this.statusMessage,
+    required this.idempotencyKey,
   }) : medications = List.unmodifiable(medications);
 
   factory CheckoutSessionSnapshot.fromDomain(CheckoutSession session) {
@@ -31,6 +33,7 @@ final class CheckoutSessionSnapshot {
       remoteCheckoutId: session.remoteCheckoutId,
       retryTargetStatus: session.retryTargetStatus,
       statusMessage: session.statusMessage,
+      idempotencyKey: session.idempotencyKey,
     );
   }
 
@@ -62,6 +65,7 @@ final class CheckoutSessionSnapshot {
           ? null
           : CheckoutStatus.values.byName(retryTargetStatusName),
       statusMessage: map['statusMessage'] as String?,
+      idempotencyKey: map['idempotencyKey'] as String?,
     );
   }
 
@@ -75,6 +79,7 @@ final class CheckoutSessionSnapshot {
       remoteCheckoutId: remoteCheckoutId,
       retryTargetStatus: retryTargetStatus,
       statusMessage: statusMessage,
+      idempotencyKey: idempotencyKey,
     );
   }
 
@@ -97,6 +102,7 @@ final class CheckoutSessionSnapshot {
       'remoteCheckoutId': remoteCheckoutId,
       'retryTargetStatus': retryTargetStatus?.name,
       'statusMessage': statusMessage,
+      'idempotencyKey': idempotencyKey,
     };
   }
 }
