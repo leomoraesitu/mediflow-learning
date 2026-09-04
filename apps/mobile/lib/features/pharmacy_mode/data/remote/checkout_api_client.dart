@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failure.dart';
 
 final class CheckoutApiClient {
   final Dio _dio;
@@ -24,7 +25,7 @@ final class CheckoutApiClient {
 
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw Exception('Erro ao fazer requisição POST para $path: ${e.message}');
+      throw NetworkFailure.fromDioException(e);
     }
   }
 
@@ -34,7 +35,7 @@ final class CheckoutApiClient {
 
       return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      throw Exception('Erro ao fazer requisição GET para $path: ${e.message}');
+      throw NetworkFailure.fromDioException(e);
     }
   }
 }

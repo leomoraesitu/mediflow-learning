@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_prescription_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failure.dart';
 
 import 'fake_http_client_adapter.dart';
 
@@ -68,7 +69,7 @@ void main() {
 
       expect(
         () async => repository.validate(prescription),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ServerUnavailableFailure>()),
       );
     },
   );

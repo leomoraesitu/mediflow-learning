@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failure.dart';
 
 import 'fake_http_client_adapter.dart';
 
@@ -51,13 +52,13 @@ void main() {
         'Internal Server Error',
         500,
         headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
+          Headers.contentTypeHeader: [Headers.textPlainContentType],
         },
       );
 
       expect(
         () async => await repository.create(session),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ServerUnavailableFailure>()),
       );
     },
   );
@@ -105,13 +106,13 @@ void main() {
             'Internal Server Error',
             500,
             headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
+              Headers.contentTypeHeader: [Headers.textPlainContentType],
             },
           );
 
       expect(
         () async => await repository.getById('remote-checkout-id'),
-        throwsA(isA<Exception>()),
+        throwsA(isA<ServerUnavailableFailure>()),
       );
     },
   );
@@ -133,4 +134,19 @@ void main() {
       );
     },
   );
+  test('throws an exception when the response body is a client error', () {
+    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] =
+        ResponseBody.fromString(
+          '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "invalid", "medications": []}',
+          400,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+
+    expect(
+      () async => await repository.getById('remote-checkout-id'),
+      throwsA(isA<PermanentFailure>()),
+    );
+  });
 }

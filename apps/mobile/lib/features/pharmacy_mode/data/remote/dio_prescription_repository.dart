@@ -8,15 +8,10 @@ final class DioPrescriptionRepository implements PrescriptionRepository {
 
   @override
   Future<bool> validate(Prescription prescription) async {
-    Map<String, dynamic> response;
-    try {
-      response = await _apiClient.post(
-        '/prescriptions/validate',
-        data: {'reference': prescription.reference},
-      );
-    } on Exception catch (e) {
-      throw Exception('Erro ao validar a prescrição: $e');
-    }
+    final response = await _apiClient.post(
+      '/prescriptions/validate',
+      data: {'reference': prescription.reference},
+    );
 
     final isValid = response['isValid'] as bool?;
     if (isValid == null) {
