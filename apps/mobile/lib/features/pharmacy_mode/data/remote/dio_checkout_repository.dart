@@ -8,29 +8,24 @@ final class DioCheckoutRepository implements CheckoutRepository {
 
   @override
   Future<String> create(CheckoutSession session) async {
-    Map<String, dynamic> response;
-    try {
-      response = await _apiClient.post(
-        '/checkouts',
-        data: {
-          'id': session.id,
-          'availableBalanceInCents': session.availableBalanceInCents,
-          'prescription': session.prescription == null
-              ? null
-              : {'reference': session.prescription!.reference},
-          'medications': [
-            for (final medication in session.medications)
-              {
-                'ean': medication.ean,
-                'name': medication.name,
-                'unitPriceInCents': medication.unitPriceInCents,
-              },
-          ],
-        },
-      );
-    } on Exception catch (e) {
-      throw Exception('Erro ao criar o checkout: $e');
-    }
+    final response = await _apiClient.post(
+      '/checkouts',
+      data: {
+        'id': session.id,
+        'availableBalanceInCents': session.availableBalanceInCents,
+        'prescription': session.prescription == null
+            ? null
+            : {'reference': session.prescription!.reference},
+        'medications': [
+          for (final medication in session.medications)
+            {
+              'ean': medication.ean,
+              'name': medication.name,
+              'unitPriceInCents': medication.unitPriceInCents,
+            },
+        ],
+      },
+    );
 
     final remoteCheckoutId = response['id'] as String?;
     if (remoteCheckoutId == null) {
@@ -41,12 +36,7 @@ final class DioCheckoutRepository implements CheckoutRepository {
 
   @override
   Future<CheckoutSession> getById(String remoteCheckoutId) async {
-    Map<String, dynamic> response;
-    try {
-      response = await _apiClient.get('/checkouts/$remoteCheckoutId');
-    } on Exception catch (e) {
-      throw Exception('Erro ao obter o checkout: $e');
-    }
+    final response = await _apiClient.get('/checkouts/$remoteCheckoutId');
 
     return _parseCheckoutSession(response);
   }

@@ -8,14 +8,9 @@ final class DioMedicationRepository implements MedicationRepository {
 
   @override
   Future<bool> checkEligibility(Medication medication) async {
-    Map<String, dynamic> response;
-    try {
-      response = await _apiClient.get(
-        '/medications/${medication.ean}/eligibility',
-      );
-    } on Exception catch (e) {
-      throw Exception('Erro ao validar o medicamento: $e');
-    }
+    final response = await _apiClient.get(
+      '/medications/${medication.ean}/eligibility',
+    );
 
     final isEligible = response['isEligible'] as bool?;
     if (isEligible == null) {
