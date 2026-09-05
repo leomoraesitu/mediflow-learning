@@ -1,5 +1,7 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
@@ -9,7 +11,9 @@ void main() {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
 
-    await tester.pumpWidget(const MainApp());
+    await tester.pumpWidget(
+      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+    );
 
     expect(openPharmacyModeButton, findsOneWidget);
     await tester.tap(openPharmacyModeButton);
@@ -33,7 +37,9 @@ void main() {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
 
-    await tester.pumpWidget(const MainApp());
+    await tester.pumpWidget(
+      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+    );
 
     expect(openPharmacyModeButton, findsOneWidget);
     await tester.tap(openPharmacyModeButton);
@@ -63,7 +69,9 @@ void main() {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
 
-    await tester.pumpWidget(const MainApp());
+    await tester.pumpWidget(
+      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+    );
 
     expect(openPharmacyModeButton, findsOneWidget);
     await tester.tap(openPharmacyModeButton);

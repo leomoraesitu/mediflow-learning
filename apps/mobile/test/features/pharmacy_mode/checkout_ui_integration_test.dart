@@ -1,7 +1,9 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/main.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 
@@ -9,7 +11,9 @@ void main() {
   testWidgets('valid scan updates the checkout session used by the screen', (
     tester,
   ) async {
-    await tester.pumpWidget(const MainApp());
+    await tester.pumpWidget(
+      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+    );
 
     await tester.tap(find.text('Iniciar Modo Farmácia'));
     await tester.pumpAndSettle();
@@ -39,7 +43,9 @@ void main() {
   testWidgets(
     'shows confirmation when the checkout session receives a medication',
     (tester) async {
-      await tester.pumpWidget(const MainApp());
+      await tester.pumpWidget(
+        MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      );
 
       await tester.tap(find.text('Iniciar Modo Farmácia'));
       await tester.pumpAndSettle();

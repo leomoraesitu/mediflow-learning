@@ -7,49 +7,78 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
 void main() {
-  runApp(const MainApp());
+  final database = CheckoutDatabase.defaults();
+  runApp(MainApp(database: database));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  const MainApp({super.key, required this.database});
+
+  final CheckoutDatabase database;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const BenefitsHomePage(availableBalance: 250.0),
+      home: BenefitsHomePage(database: database, availableBalance: 250.0),
       theme: AppTheme.light,
     );
   }
 }
 
 class BenefitsHomePage extends StatelessWidget {
-  const BenefitsHomePage({required this.availableBalance, super.key});
+  const BenefitsHomePage({
+    required this.availableBalance,
+    super.key,
+    required this.database,
+  });
 
   final double availableBalance;
 
+  final CheckoutDatabase database;
+
   void _openPharmacyMode(BuildContext context) {
+    final storage = DriftCheckoutSessionStorage(database);
+    final outboxCheckoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
+    final cubitFuture = CheckoutCubit.restore(
+      fallbackSession: CheckoutSession(
+        id: 'session-001',
+        availableBalanceInCents: (availableBalance * 100).round(),
+        prescription: null,
+        medications: [],
+        status: CheckoutStatus.collectingMedication,
+      ),
+      storage: storage,
+      stateMachine: const CheckoutStateMachine(),
+      prescriptionRepository: const DemoPrescriptionRepository(),
+      medicationRepository: const DemoMedicationRepository(),
+      checkoutRepository: outboxCheckoutRepository,
+    );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) {
-          return BlocProvider(
-            create: (_) => CheckoutCubit(
-              initialSession: CheckoutSession(
-                id: 'session-001',
-                availableBalanceInCents: (availableBalance * 100).round(),
-                prescription: null,
-                medications: [],
-                status: CheckoutStatus.collectingMedication,
-              ),
-              stateMachine: const CheckoutStateMachine(),
-              prescriptionRepository: const DemoPrescriptionRepository(),
-              medicationRepository: const DemoMedicationRepository(),
-              checkoutRepository: DemoCheckoutRepository(),
-            ),
-            child: const PharmacyModePage(),
+          return FutureBuilder<CheckoutCubit>(
+            future: cubitFuture,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return BlocProvider.value(
+                value: snapshot.data!,
+                child: const PharmacyModePage(),
+              );
+            },
           );
         },
       ),
