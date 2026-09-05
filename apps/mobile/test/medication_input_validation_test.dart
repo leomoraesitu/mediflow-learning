@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
@@ -10,9 +12,13 @@ void main() {
   ) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
-
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
     await tester.pumpWidget(
-      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      MainApp(database: database, checkoutRepository: checkoutRepository),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);
@@ -36,9 +42,14 @@ void main() {
   testWidgets('exibe erro quando o EAN não possui 13 dígitos', (tester) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
 
     await tester.pumpWidget(
-      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      MainApp(database: database, checkoutRepository: checkoutRepository),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);
@@ -68,9 +79,14 @@ void main() {
   ) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
 
     await tester.pumpWidget(
-      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      MainApp(database: database, checkoutRepository: checkoutRepository),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);

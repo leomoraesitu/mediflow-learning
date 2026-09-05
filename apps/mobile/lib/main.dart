@@ -11,44 +11,66 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.da
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
-void main() {
+void main() async {
   final database = CheckoutDatabase.defaults();
-  runApp(MainApp(database: database));
+  final demoCheckoutRepository = DemoCheckoutRepository();
+  final outboxCheckoutRepository = OutboxCheckoutRepository(
+    inner: demoCheckoutRepository,
+    database: database,
+  );
+
+  final synchronizer = OutboxSynchronizer(
+    database: database,
+    checkoutRepository: outboxCheckoutRepository,
+  );
+  await synchronizer.drain();
+
+  runApp(
+    MainApp(database: database, checkoutRepository: outboxCheckoutRepository),
+  );
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key, required this.database});
-
   final CheckoutDatabase database;
+  final CheckoutRepository checkoutRepository;
+
+  const MainApp({
+    super.key,
+    required this.database,
+    required this.checkoutRepository,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: BenefitsHomePage(database: database, availableBalance: 250.0),
+      home: BenefitsHomePage(
+        availableBalance: 250.0,
+        database: database,
+        checkoutRepository: checkoutRepository,
+      ),
       theme: AppTheme.light,
     );
   }
 }
 
 class BenefitsHomePage extends StatelessWidget {
-  const BenefitsHomePage({
-    required this.availableBalance,
-    super.key,
-    required this.database,
-  });
-
   final double availableBalance;
-
   final CheckoutDatabase database;
+  final CheckoutRepository checkoutRepository;
+
+  const BenefitsHomePage({
+    super.key,
+    required this.availableBalance,
+    required this.database,
+    required this.checkoutRepository,
+  });
 
   void _openPharmacyMode(BuildContext context) {
     final storage = DriftCheckoutSessionStorage(database);
-    final outboxCheckoutRepository = OutboxCheckoutRepository(
-      inner: DemoCheckoutRepository(),
-      database: database,
-    );
+
     final cubitFuture = CheckoutCubit.restore(
       fallbackSession: CheckoutSession(
         id: 'session-001',
@@ -61,7 +83,7 @@ class BenefitsHomePage extends StatelessWidget {
       stateMachine: const CheckoutStateMachine(),
       prescriptionRepository: const DemoPrescriptionRepository(),
       medicationRepository: const DemoMedicationRepository(),
-      checkoutRepository: outboxCheckoutRepository,
+      checkoutRepository: checkoutRepository,
     );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
