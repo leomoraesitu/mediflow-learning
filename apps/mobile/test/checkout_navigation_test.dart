@@ -2,6 +2,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
@@ -10,9 +12,13 @@ void main() {
   ) async {
     final pharmacyModePage = find.byType(PharmacyModePage);
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
-
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
     await tester.pumpWidget(
-      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      MainApp(database: database, checkoutRepository: checkoutRepository),
     );
 
     expect(find.text('MediFlow'), findsOneWidget);
@@ -33,8 +39,13 @@ void main() {
     final readingSimulation = find.text('Simular leitura');
     final backButton = find.byType(BackButton);
 
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
     await tester.pumpWidget(
-      MainApp(database: CheckoutDatabase(NativeDatabase.memory())),
+      MainApp(database: database, checkoutRepository: checkoutRepository),
     );
 
     await tester.tap(openPharmacyModeButton);
