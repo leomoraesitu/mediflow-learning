@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
@@ -14,7 +15,25 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
+import 'package:firebase_core/firebase_core.dart';
+
+import 'firebase_options.dart';
+
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  try {
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
+  } on FirebaseAuthException catch (e) {
+    // ignore: avoid_print
+    print(
+      'Falha ao autenticar anonimamente: ${e.message}. Seguindo sem usuário autenticado.',
+    );
+  }
+
   final database = CheckoutDatabase.defaults();
   final demoCheckoutRepository = DemoCheckoutRepository();
   final outboxCheckoutRepository = OutboxCheckoutRepository(
