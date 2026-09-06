@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "222977462705",
+    "project_id": "mediflow-learning",
+    "storage_bucket": "mediflow-learning.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:222977462705:android:570c2f3e6e96bde615ad90",
+        "android_client_info": {
+          "package_name": "com.leomoraesitu.mediflow_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPw4yskKLtfDzQ5dFJDFy9OCH7dUsIHPs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

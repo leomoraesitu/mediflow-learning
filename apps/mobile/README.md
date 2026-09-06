@@ -111,6 +111,8 @@ O fluxo em execução no app permanece sintético, mas a persistência que o sus
 
 `resilience_test.dart` comprova o cenário crítico de ponta a ponta: um `ResilientFakeCheckoutServer` (fake de teste, não parte do app) deduplica por `idempotencyKey` e conta quantas vezes processou uma criação de verdade, independente de a resposta ter chegado ao cliente. O teste cria um checkout com a resposta programada para se perder (`dropNextResponse = true`), confirma que a exceção chega ao chamador enquanto o servidor já processou (`creationCount == 1`) e o evento permanece no outbox, simula o reinício do app com novas instâncias de `OutboxCheckoutRepository`/`OutboxSynchronizer` sobre o mesmo `CheckoutDatabase`, e confirma que o reenvio conclui sem criar um segundo checkout (`creationCount` continua `1`) e sem deixar nada pendente no outbox — a garantia que a Aula 23 (idempotência), a Aula 25 (outbox) e o reenvio construído nesta sessão prometiam, agora provada junta.
 
+Na Aula 29, o app passou a inicializar o Firebase de verdade — um projeto de demonstração (`mediflow-learning`, sem dados reais), configurado via FlutterFire CLI (`flutterfire configure --project=mediflow-learning`), que gerou `lib/firebase_options.dart`, `android/app/google-services.json` e `firebase.json`, além de aplicar o plugin `com.google.gms.google-services` nos arquivos Gradle. `main()` chama `WidgetsFlutterBinding.ensureInitialized()` antes de `await Firebase.initializeApp(...)` — o binding é a ponte entre o Dart e os platform channels que o SDK nativo do Firebase usa, então precisa existir primeiro. Em seguida, o app autentica anonimamente (`FirebaseAuth.instance.signInAnonymously()`, só quando `currentUser` ainda é `null`, evitando uma chamada de rede redundante em toda abertura já que o Firebase Auth persiste a sessão anônima no dispositivo). Uma falha nesse login é capturada especificamente por `on FirebaseAuthException` — registrada, não silenciada — e o app segue a inicialização mesmo assim, consistente com a filosofia de resiliência das aulas anteriores: a ausência de um usuário autenticado não deveria impedir o uso do que não depende de identidade. Nenhum dado do Firebase (`apiKey` incluída) é segredo — a proteção de um projeto Firebase vem das Security Rules e do App Check, não de esconder esses valores, por isso os arquivos de configuração gerados são versionados normalmente.
+
 ## Execução
 
 Consulte os dispositivos disponíveis, entre no diretório do aplicativo e execute-o informando o identificador desejado:
@@ -175,3 +177,7 @@ O resultado esperado é formatação limpa, análise estática sem problemas, 80
 - [`drift_flutter`](https://pub.dev/packages/drift_flutter)
 - [`dio`](https://pub.dev/packages/dio)
 - [Records em Dart — pattern matching e `sealed class`](https://dart.dev/language/branches#exhaustiveness-checking)
+- [Configuração oficial Firebase/Flutter](https://firebase.google.com/docs/flutter/setup)
+- [FlutterFire CLI](https://firebase.google.com/docs/flutter/setup?platform=android#configure-firebase)
+- [Autenticação anônima](https://firebase.google.com/docs/auth/flutter/anonymous-auth)
+- [`WidgetsFlutterBinding.ensureInitialized`](https://api.flutter.dev/flutter/widgets/WidgetsFlutterBinding/ensureInitialized.html)
