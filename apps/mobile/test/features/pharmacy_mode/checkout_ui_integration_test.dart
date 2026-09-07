@@ -20,7 +20,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MainApp(database: database, checkoutRepository: checkoutRepository),
+      MainApp(
+        database: database,
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+      ),
     );
 
     await tester.tap(find.text('Iniciar Modo Farmácia'));
@@ -58,7 +63,12 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MainApp(database: database, checkoutRepository: checkoutRepository),
+        MainApp(
+          database: database,
+          checkoutRepository: checkoutRepository,
+          prescriptionRepository: const DemoPrescriptionRepository(),
+          medicationRepository: const DemoMedicationRepository(),
+        ),
       );
 
       await tester.tap(find.text('Iniciar Modo Farmácia'));

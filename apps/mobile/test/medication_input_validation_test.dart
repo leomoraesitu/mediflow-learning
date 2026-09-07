@@ -18,7 +18,12 @@ void main() {
       database: database,
     );
     await tester.pumpWidget(
-      MainApp(database: database, checkoutRepository: checkoutRepository),
+      MainApp(
+        database: database,
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+      ),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);
@@ -49,7 +54,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MainApp(database: database, checkoutRepository: checkoutRepository),
+      MainApp(
+        database: database,
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+      ),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);
@@ -86,7 +96,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MainApp(database: database, checkoutRepository: checkoutRepository),
+      MainApp(
+        database: database,
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+      ),
     );
 
     expect(openPharmacyModeButton, findsOneWidget);
