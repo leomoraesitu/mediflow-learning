@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
@@ -18,6 +19,7 @@ void main() {
       inner: DemoCheckoutRepository(),
       database: database,
     );
+    final settings = StaticOperationalSettings();
 
     await tester.pumpWidget(
       MainApp(
@@ -25,6 +27,7 @@ void main() {
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
         medicationRepository: const DemoMedicationRepository(),
+        settings: settings,
       ),
     );
 
@@ -61,6 +64,7 @@ void main() {
         inner: DemoCheckoutRepository(),
         database: database,
       );
+      final settings = StaticOperationalSettings();
 
       await tester.pumpWidget(
         MainApp(
@@ -68,6 +72,7 @@ void main() {
           checkoutRepository: checkoutRepository,
           prescriptionRepository: const DemoPrescriptionRepository(),
           medicationRepository: const DemoMedicationRepository(),
+          settings: settings,
         ),
       );
 
