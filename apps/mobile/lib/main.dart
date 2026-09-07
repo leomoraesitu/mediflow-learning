@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
@@ -16,6 +17,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchr
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 import 'firebase_options.dart';
 
@@ -46,6 +48,7 @@ void main() async {
     checkoutRepository: outboxCheckoutRepository,
   );
   await synchronizer.drain();
+  Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
 
   runApp(
     MainApp(database: database, checkoutRepository: outboxCheckoutRepository),
