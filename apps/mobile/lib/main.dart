@@ -1,5 +1,6 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
@@ -14,6 +15,9 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_reposi
 import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_medication_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_prescription_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -37,11 +41,29 @@ void main() async {
   }
 
   final database = CheckoutDatabase.defaults();
+
   final demoCheckoutRepository = DemoCheckoutRepository();
+
   final outboxCheckoutRepository = OutboxCheckoutRepository(
     inner: demoCheckoutRepository,
     database: database,
   );
+
+  final performanceTracingPrescriptionRepository =
+      PerformanceTracingPrescriptionRepository(
+        inner: DemoPrescriptionRepository(),
+        performance: FirebasePerformance.instance,
+      );
+  final performanceTracingMedicationRepository =
+      PerformanceTracingMedicationRepository(
+        inner: DemoMedicationRepository(),
+        performance: FirebasePerformance.instance,
+      );
+  final performanceTracingCheckoutRepository =
+      PerformanceTracingCheckoutRepository(
+        inner: outboxCheckoutRepository,
+        performance: FirebasePerformance.instance,
+      );
 
   final synchronizer = OutboxSynchronizer(
     database: database,
@@ -51,18 +73,27 @@ void main() async {
   Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
 
   runApp(
-    MainApp(database: database, checkoutRepository: outboxCheckoutRepository),
+    MainApp(
+      database: database,
+      checkoutRepository: performanceTracingCheckoutRepository,
+      prescriptionRepository: performanceTracingPrescriptionRepository,
+      medicationRepository: performanceTracingMedicationRepository,
+    ),
   );
 }
 
 class MainApp extends StatelessWidget {
   final CheckoutDatabase database;
   final CheckoutRepository checkoutRepository;
+  final PrescriptionRepository prescriptionRepository;
+  final MedicationRepository medicationRepository;
 
   const MainApp({
     super.key,
     required this.database,
     required this.checkoutRepository,
+    required this.prescriptionRepository,
+    required this.medicationRepository,
   });
 
   @override
@@ -72,6 +103,8 @@ class MainApp extends StatelessWidget {
         availableBalance: 250.0,
         database: database,
         checkoutRepository: checkoutRepository,
+        prescriptionRepository: prescriptionRepository,
+        medicationRepository: medicationRepository,
       ),
       theme: AppTheme.light,
     );
@@ -82,12 +115,17 @@ class BenefitsHomePage extends StatelessWidget {
   final double availableBalance;
   final CheckoutDatabase database;
   final CheckoutRepository checkoutRepository;
+  final PrescriptionRepository prescriptionRepository;
+  final MedicationRepository medicationRepository;
 
   const BenefitsHomePage({
     super.key,
     required this.availableBalance,
     required this.database,
     required this.checkoutRepository,
+
+    required this.prescriptionRepository,
+    required this.medicationRepository,
   });
 
   void _openPharmacyMode(BuildContext context) {
@@ -103,8 +141,8 @@ class BenefitsHomePage extends StatelessWidget {
       ),
       storage: storage,
       stateMachine: const CheckoutStateMachine(),
-      prescriptionRepository: const DemoPrescriptionRepository(),
-      medicationRepository: const DemoMedicationRepository(),
+      prescriptionRepository: prescriptionRepository,
+      medicationRepository: medicationRepository,
       checkoutRepository: checkoutRepository,
     );
     Navigator.of(context).push(
