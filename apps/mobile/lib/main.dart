@@ -1,7 +1,10 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_performance/firebase_performance.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
+import 'package:mediflow_mobile/config/operational_settings.dart';
+import 'package:mediflow_mobile/config/remote_config_operational_settings.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
@@ -42,6 +45,10 @@ void main() async {
 
   final database = CheckoutDatabase.defaults();
 
+  final settings = await RemoteConfigOperationalSettings.load(
+    FirebaseRemoteConfig.instance,
+  );
+
   final demoCheckoutRepository = DemoCheckoutRepository();
 
   final outboxCheckoutRepository = OutboxCheckoutRepository(
@@ -78,6 +85,7 @@ void main() async {
       checkoutRepository: performanceTracingCheckoutRepository,
       prescriptionRepository: performanceTracingPrescriptionRepository,
       medicationRepository: performanceTracingMedicationRepository,
+      settings: settings,
     ),
   );
 }
@@ -87,6 +95,7 @@ class MainApp extends StatelessWidget {
   final CheckoutRepository checkoutRepository;
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
+  final OperationalSettings settings;
 
   const MainApp({
     super.key,
@@ -94,6 +103,7 @@ class MainApp extends StatelessWidget {
     required this.checkoutRepository,
     required this.prescriptionRepository,
     required this.medicationRepository,
+    required this.settings,
   });
 
   @override
@@ -102,6 +112,7 @@ class MainApp extends StatelessWidget {
       home: BenefitsHomePage(
         availableBalance: 250.0,
         database: database,
+        settings: settings,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: prescriptionRepository,
         medicationRepository: medicationRepository,
@@ -117,15 +128,16 @@ class BenefitsHomePage extends StatelessWidget {
   final CheckoutRepository checkoutRepository;
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
+  final OperationalSettings settings;
 
   const BenefitsHomePage({
     super.key,
     required this.availableBalance,
     required this.database,
     required this.checkoutRepository,
-
     required this.prescriptionRepository,
     required this.medicationRepository,
+    required this.settings,
   });
 
   void _openPharmacyMode(BuildContext context) {
@@ -210,11 +222,25 @@ class BenefitsHomePage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              ElevatedButton(
-                onPressed: () {
-                  _openPharmacyMode(context);
-                },
-                child: const Text('Iniciar Modo Farmácia'),
+
+              Column(
+                children: [
+                  if (settings.maintenanceMode)
+                    Text(
+                      settings.maintenanceMessage,
+                      textAlign: TextAlign.center,
+                    ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  ElevatedButton(
+                    onPressed: settings.maintenanceMode
+                        ? null
+                        : () {
+                            _openPharmacyMode(context);
+                          },
+                    child: const Text('Iniciar Modo Farmácia'),
+                  ),
+                ],
               ),
             ],
           ),
