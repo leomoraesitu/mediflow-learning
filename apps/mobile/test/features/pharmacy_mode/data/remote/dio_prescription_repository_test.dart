@@ -19,7 +19,7 @@ void main() {
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
       ..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient(dio: dio);
+    apiClient = CheckoutApiClient.withDio(dio);
     repository = DioPrescriptionRepository(apiClient: apiClient);
     prescription = Prescription(reference: 'some-prescription');
   });

@@ -19,7 +19,7 @@ void main() {
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
       ..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient(dio: dio);
+    apiClient = CheckoutApiClient.withDio(dio);
     repository = DioMedicationRepository(apiClient: apiClient);
     medication = Medication(
       ean: '1234567890123',
