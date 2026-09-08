@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// Projeto de demonstração do curso MediFlow, com dados fictícios.
+// Os checkouts são criados e lidos exclusivamente pelas Cloud Functions,
+// que usam o Admin SDK e ignoram estas regras. Nenhum cliente acessa o
+// Firestore diretamente, então todo acesso direto é negado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

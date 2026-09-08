@@ -13,3 +13,13 @@ coverage/
 devtools_options.yaml
 # Widget Preview related
 .widget_preview/
+
+# Firebase (emuladores e artefatos locais)
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
+dataconnect-debug.log
