@@ -19,7 +19,7 @@ void main() {
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
       ..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient(dio: dio);
+    apiClient = CheckoutApiClient.withDio(dio);
     repository = DioCheckoutRepository(apiClient: apiClient);
     session = CheckoutSession(
       id: 'session-id',

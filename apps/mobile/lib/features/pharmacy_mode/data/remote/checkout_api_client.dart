@@ -4,17 +4,17 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failu
 final class CheckoutApiClient {
   final Dio _dio;
 
-  CheckoutApiClient({Dio? dio})
-    : _dio =
-          dio ??
-          Dio(
-            BaseOptions(
-              baseUrl: 'https://mediflow.example',
-              connectTimeout: const Duration(seconds: 5),
-              sendTimeout: const Duration(seconds: 5),
-              receiveTimeout: const Duration(seconds: 5),
-            ),
-          );
+  CheckoutApiClient({required String baseUrl, required Duration timeout})
+    : _dio = Dio(
+        BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: timeout,
+          sendTimeout: timeout,
+          receiveTimeout: timeout,
+        ),
+      );
+
+  CheckoutApiClient.withDio(Dio dio) : _dio = dio;
 
   Future<Map<String, dynamic>> post(
     String path, {

@@ -14,8 +14,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_medication_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_prescription_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_checkout_repository.dart';
@@ -28,7 +31,17 @@ import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 import 'firebase_options.dart';
 
+const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
+
 void main() async {
+  if (checkoutApiBaseUrl.isEmpty) {
+    throw StateError(
+      'CHECKOUT_API_BASE_URL não foi informado. Execute com: '
+      'flutter run --dart-define=CHECKOUT_API_BASE_URL='
+      'http://10.0.2.2:5001/mediflow-learning/us-central1/api',
+    );
+  }
+
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
@@ -49,21 +62,24 @@ void main() async {
     FirebaseRemoteConfig.instance,
   );
 
-  final demoCheckoutRepository = DemoCheckoutRepository();
+  final apiClient = CheckoutApiClient(
+    baseUrl: checkoutApiBaseUrl,
+    timeout: settings.checkoutTimeout,
+  );
 
   final outboxCheckoutRepository = OutboxCheckoutRepository(
-    inner: demoCheckoutRepository,
+    inner: DioCheckoutRepository(apiClient: apiClient),
     database: database,
   );
 
   final performanceTracingPrescriptionRepository =
       PerformanceTracingPrescriptionRepository(
-        inner: DemoPrescriptionRepository(),
+        inner: DioPrescriptionRepository(apiClient: apiClient),
         performance: FirebasePerformance.instance,
       );
   final performanceTracingMedicationRepository =
       PerformanceTracingMedicationRepository(
-        inner: DemoMedicationRepository(),
+        inner: DioMedicationRepository(apiClient: apiClient),
         performance: FirebasePerformance.instance,
       );
   final performanceTracingCheckoutRepository =
