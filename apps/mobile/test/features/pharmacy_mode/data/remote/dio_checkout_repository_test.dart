@@ -18,7 +18,7 @@ void main() {
     fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient.withDio(dio);
+    apiClient = CheckoutApiClient.withDio(dio, tokenProvider: () async => 'test-token');
     repository = DioCheckoutRepository(apiClient: apiClient);
     session = CheckoutSession(
       id: 'session-id',
@@ -140,5 +140,77 @@ void main() {
     final requestOptions = fakeAdapter.capturedHeaders['/checkouts'];
     expect(requestOptions, isNotNull);
     expect(requestOptions!['Idempotency-Key'], 'unique-key');
+  });
+
+  test('sends the auth token as a Bearer header when one is available', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+
+    apiClient = CheckoutApiClient.withDio(dio, tokenProvider: () async => 'test-token');
+
+    final sessionWithToken = CheckoutSession(
+      id: 'session-id',
+      availableBalanceInCents: 1000,
+      prescription: null,
+      medications: [],
+      status: CheckoutStatus.paid,
+      idempotencyKey: 'unique-key',
+    );
+
+    repository = DioCheckoutRepository(apiClient: apiClient);
+    await repository.create(sessionWithToken);
+
+    final requestOptions = fakeAdapter.capturedHeaders['/checkouts'];
+    expect(requestOptions, isNotNull);
+    expect(requestOptions!['Authorization'], 'Bearer test-token');
+  });
+  test('sends the request without an Authorization header when there is no token', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+
+    // Um Dio próprio, e não o do setUp: withDio adiciona um interceptor ao
+    // objeto recebido, então reaproveitar aquele empilharia este provedor sobre
+    // o anterior, e o header do primeiro continuaria sendo enviado.
+    final adapterWithoutToken = FakeHttpClientAdapter();
+    adapterWithoutToken.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+
+    final dioWithoutToken = Dio(BaseOptions(baseUrl: 'https://example.com'))
+      ..httpClientAdapter = adapterWithoutToken;
+
+    apiClient = CheckoutApiClient.withDio(dioWithoutToken, tokenProvider: () async => null);
+
+    final sessionWithToken = CheckoutSession(
+      id: 'session-id',
+      availableBalanceInCents: 1000,
+      prescription: null,
+      medications: [],
+      status: CheckoutStatus.paid,
+      idempotencyKey: 'unique-key',
+    );
+
+    repository = DioCheckoutRepository(apiClient: apiClient);
+    await repository.create(sessionWithToken);
+
+    // A requisição é enviada mesmo sem identidade: quem recusa é o servidor,
+    // com 401, e não o cliente deixando de tentar.
+    final requestOptions = adapterWithoutToken.capturedHeaders['/checkouts'];
+    expect(requestOptions, isNotNull);
+    expect(requestOptions!['Authorization'], isNull);
   });
 }

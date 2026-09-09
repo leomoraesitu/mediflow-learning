@@ -29,6 +29,16 @@ Usar a chave como identificador do documento, em vez de consultar por um campo i
 
 O Admin SDK ignora as regras de segurança do Firestore, então `firestore.rules` (na raiz do repositório) nega todo acesso direto de clientes: nenhum app fala com o Firestore sem passar por estas functions.
 
+### Autenticação
+
+Desde a Aula 35, um middleware `requireAuth` protege **todas** as rotas. Ele exige o header `Authorization` no formato `Bearer <token>`, valida o token com `admin.auth().verifyIdToken(...)` e devolve `401` quando ele falta, está malformado ou é rejeitado. O resultado decodificado vai para `res.locals.user`, e não para `req.body`, que pertence aos dados enviados pelo cliente.
+
+O posicionamento é o que define o alcance: `app.use(requireAuth)` vem depois de `express.json()` e antes da primeira rota, então tudo registrado a seguir fica protegido automaticamente. Registrar a verificação como um `app.get(caminho, ...)` adicional não funcionaria — o Express casa a primeira rota correspondente, que responde e nunca chega no segundo handler.
+
+Proteger também `validate` e `eligibility`, que hoje sempre respondem `true`, é deliberado. A aparente inocuidade é um acidente da implementação fictícia: numa versão real elas consultam dados de benefício de uma pessoa, e um endpoint aberto que responde sobre elegibilidade é um vazamento. Deixar exceções abertas também cria uma pendência que alguém precisa lembrar de fechar depois.
+
+Quando as functions rodam sob o emulador, o Admin SDK detecta a variável `FIREBASE_AUTH_EMULATOR_HOST` e valida contra o emulador de Authentication em vez do Firebase real, sem configuração adicional. Por isso o aplicativo também precisa apontar para esse emulador, ou os dois estarão validando identidades de mundos diferentes.
+
 ## Requisitos
 
 - Node 24 ou superior (`engines` do `package.json` declara `24`; o emulador avisa se a versão global diferir, mas funciona).
@@ -44,7 +54,7 @@ npm install
 npm run build
 
 cd ..
-firebase emulators:start --only functions,firestore
+firebase emulators:start --only auth,functions,firestore
 ```
 
 A function fica em `http://127.0.0.1:5001/mediflow-learning/us-central1/api` e a interface dos emuladores em `http://127.0.0.1:4000`.
@@ -58,9 +68,9 @@ npm run lint
 npm test
 ```
 
-O resultado esperado é compilação limpa, análise estática sem problemas e 8 testes aprovados.
+O resultado esperado é compilação limpa, análise estática sem problemas e 13 testes aprovados.
 
-Os testes usam `supertest` para chamar o app Express diretamente em memória, com um fake do Firestore substituindo `firebase-admin` via `jest.mock`. Não dependem de nenhum emulador em execução, o que os mantém rápidos e reproduzíveis em qualquer máquina. O caso mais importante da suíte é o da retentativa: duas chamadas a `POST /checkouts` com a mesma `Idempotency-Key` devem devolver `201` e depois `200`, com o mesmo `id`.
+Os testes usam `supertest` para chamar o app Express diretamente em memória, com um fake do Firestore substituindo `firebase-admin` via `jest.mock`. Não dependem de nenhum emulador em execução, o que os mantém rápidos e reproduzíveis em qualquer máquina. Dois casos concentram o valor da suíte. O da retentativa: duas chamadas a `POST /checkouts` com a mesma `Idempotency-Key` devem devolver `201` e depois `200`, com o mesmo `id`. E o que dispara uma requisição sem token para **cada uma das quatro rotas** e exige `401` em todas — foi ele que teria pego a primeira versão do middleware, que protegia apenas uma rota. Um terceiro caso verifica que o corpo da requisição sobrevive à autenticação, protegendo contra uma versão anterior que sobrescrevia `req.body` com as claims do token.
 
 O comportamento também foi verificado manualmente contra o emulador real, com Firestore de verdade, confirmando que a segunda tentativa não cria um segundo documento na coleção.
 
@@ -78,3 +88,5 @@ O comportamento também foi verificado manualmente contra o emulador real, com F
 - [Testar functions localmente](https://firebase.google.com/docs/functions/local-emulator?gen=2nd)
 - [Admin SDK e Firestore](https://firebase.google.com/docs/firestore/quickstart#node.js)
 - [Regras de segurança do Firestore](https://firebase.google.com/docs/firestore/security/get-started)
+- [Verificar tokens de ID no backend](https://firebase.google.com/docs/auth/admin/verify-id-tokens)
+- [Emulador de Authentication](https://firebase.google.com/docs/emulator-suite/connect_auth)

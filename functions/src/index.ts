@@ -10,7 +10,24 @@ const app = express();
 
 export {app};
 
+const requireAuth: express.RequestHandler = async (req, res, next) => {
+  const authHeader = req.get("Authorization");
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({error: "Token não fornecido ou formato inválido."});
+    return;
+  }
+
+  try {
+    res.locals.user = await admin.auth().verifyIdToken(authHeader.slice(7));
+    next();
+  } catch {
+    res.status(401).json({error: "Token de autenticação inválido."});
+  }
+};
+
 app.use(express.json());
+app.use(requireAuth);
 
 app.post("/prescriptions/validate", (req, res) => {
   const {reference} = req.body;

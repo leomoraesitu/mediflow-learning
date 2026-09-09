@@ -1,10 +1,26 @@
 import request from "supertest";
 
+const validToken = "valid-token";
+const authorization = `Bearer ${validToken}`;
+
 jest.mock("firebase-admin", () => {
   const store = new Map<string, Record<string, unknown>>();
 
   return {
     initializeApp: jest.fn(),
+
+    auth: () => ({
+      // Aceita um único token conhecido e rejeita qualquer outro, imitando
+      // o comportamento do Admin SDK, que lança quando o token é inválido
+      // ou expirado em vez de devolver um resultado negativo.
+      verifyIdToken: async (token: string) => {
+        if (token !== "valid-token") {
+          throw new Error("Firebase ID token has invalid signature.");
+        }
+
+        return {uid: "user-01"};
+      },
+    }),
 
     firestore: () => ({
       collection: () => ({
@@ -32,19 +48,60 @@ jest.mock("firebase-admin", () => {
 import {app} from "./index";
 
 describe("API", () => {
+  describe("autenticação", () => {
+    it("returns 401 when the Authorization header is missing", async () => {
+      const response = await request(app).get("/medications/ABC/eligibility");
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 401 when the header is not a Bearer token", async () => {
+      const response = await request(app)
+        .get("/medications/ABC/eligibility")
+        .set("Authorization", validToken);
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 401 when the token is rejected", async () => {
+      const response = await request(app)
+        .get("/medications/ABC/eligibility")
+        .set("Authorization", "Bearer expired-token");
+
+      expect(response.status).toBe(401);
+    });
+
+    it("protects every route, not only the ones that write", async () => {
+      const responses = await Promise.all([
+        request(app).post("/prescriptions/validate").send({reference: "RX-01"}),
+        request(app).get("/medications/ABC/eligibility"),
+        request(app).post("/checkouts").set("Idempotency-Key", "k").send({}),
+        request(app).get("/checkouts/any-id"),
+      ]);
+
+      for (const response of responses) {
+        expect(response.status).toBe(401);
+      }
+    });
+  });
+
   describe("POST /prescriptions/validate", () => {
     it("returns 400 when reference is missing", async () => {
       const response = await request(app)
         .post("/prescriptions/validate")
+        .set("Authorization", authorization)
         .send({});
 
       expect(response.status).toBe(400);
     });
 
     it("returns isValid true when reference is provided", async () => {
-      const response = await request(app).post("/prescriptions/validate").send({
-        reference: "prescription-01",
-      });
+      const response = await request(app)
+        .post("/prescriptions/validate")
+        .set("Authorization", authorization)
+        .send({
+          reference: "prescription-01",
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -55,7 +112,9 @@ describe("API", () => {
 
   describe("GET /medications/:ean/eligibility", () => {
     it("returns isEligible true", async () => {
-      const response = await request(app).get("/medications/ABC/eligibility");
+      const response = await request(app)
+        .get("/medications/ABC/eligibility")
+        .set("Authorization", authorization);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -75,6 +134,7 @@ describe("API", () => {
     it("returns 400 when Idempotency-Key is missing", async () => {
       const response = await request(app)
         .post("/checkouts")
+        .set("Authorization", authorization)
         .send(checkoutPayload);
 
       expect(response.status).toBe(400);
@@ -83,6 +143,7 @@ describe("API", () => {
     it("creates a checkout and returns 201 with its id", async () => {
       const response = await request(app)
         .post("/checkouts")
+        .set("Authorization", authorization)
         .set("Idempotency-Key", "key-create-01")
         .send(checkoutPayload);
 
@@ -97,11 +158,13 @@ describe("API", () => {
 
       const firstResponse = await request(app)
         .post("/checkouts")
+        .set("Authorization", authorization)
         .set("Idempotency-Key", idempotencyKey)
         .send(checkoutPayload);
 
       const secondResponse = await request(app)
         .post("/checkouts")
+        .set("Authorization", authorization)
         .set("Idempotency-Key", idempotencyKey)
         .send(checkoutPayload);
 
@@ -118,13 +181,32 @@ describe("API", () => {
 
       expect(secondResponse.body.id).toBe(firstResponse.body.id);
     });
+
+    it("keeps the request body intact after authentication", async () => {
+      const idempotencyKey = "key-body-01";
+
+      await request(app)
+        .post("/checkouts")
+        .set("Authorization", authorization)
+        .set("Idempotency-Key", idempotencyKey)
+        .send(checkoutPayload);
+
+      const response = await request(app)
+        .get(`/checkouts/${idempotencyKey}`)
+        .set("Authorization", authorization);
+
+      expect(response.body).toEqual({
+        ...checkoutPayload,
+        status: "paid",
+      });
+    });
   });
 
   describe("GET /checkouts/:remoteCheckoutId", () => {
     it("returns 404 when checkout does not exist", async () => {
-      const response = await request(app).get(
-        "/checkouts/non-existent-checkout",
-      );
+      const response = await request(app)
+        .get("/checkouts/non-existent-checkout")
+        .set("Authorization", authorization);
 
       expect(response.status).toBe(404);
     });
@@ -147,12 +229,15 @@ describe("API", () => {
 
       const createResponse = await request(app)
         .post("/checkouts")
+        .set("Authorization", authorization)
         .set("Idempotency-Key", idempotencyKey)
         .send(checkoutPayload);
 
       expect(createResponse.status).toBe(201);
 
-      const response = await request(app).get(`/checkouts/${idempotencyKey}`);
+      const response = await request(app)
+        .get(`/checkouts/${idempotencyKey}`)
+        .set("Authorization", authorization);
 
       expect(response.status).toBe(200);
 

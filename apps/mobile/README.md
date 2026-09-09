@@ -130,6 +130,14 @@ No Android, duas particularidades foram necessárias. O emulador enxerga a máqu
 
 A validação foi feita com o app rodando contra os emuladores de Functions e Firestore. O fluxo completo produziu quatro requisições e um documento no Firestore cujo identificador é a `idempotencyKey` gerada pela máquina de estados. Em seguida, o backend foi derrubado entre a confirmação de elegibilidade e a criação do pagamento: a sessão foi para `recoverableFailure` com `retryTargetStatus` preservado, e o evento permaneceu no outbox. Com o backend de volta, o `OutboxSynchronizer` reenviou sozinho na inicialização seguinte, sem intervenção. Uma retentativa manual posterior, com a mesma chave, devolveu o checkout existente em vez de criar outro — o Firestore terminou com exatamente um documento. É o ciclo das Aulas 23 a 27 demonstrado no aplicativo real, e não mais só em teste.
 
+Na Aula 35, as rotas do backend passaram a exigir identidade, e o aplicativo passou a enviá-la. O aplicativo autentica anonimamente desde a Aula 29, mas nunca usava esse token para nada.
+
+A decisão de desenho está em **onde** o token é obtido. A solução ingênua seria capturá-lo ao montar a requisição, ou pior, ao enfileirar o evento no outbox. Isso criaria uma bomba-relógio: tokens do Firebase expiram em uma hora, e o outbox existe precisamente para reenviar horas depois, então um evento carregaria um token morto e seria rejeitado com `401` para sempre. Por isso `CheckoutApiClient` recebe um `AuthTokenProvider` — uma função `Future<String?> Function()` — e a chama **dentro de um interceptor do Dio, no instante de cada requisição**. O evento persistido guarda a intenção, nunca a credencial.
+
+Injetar uma função em vez de importar `firebase_auth` no cliente HTTP também mantém a camada de rede ignorante sobre quem provê identidade, e permite que os testes forneçam um token fixo sem inicializar Firebase — o mesmo problema que os decorators de performance causaram na Aula 31. Quando o provedor devolve `null`, nenhum header é enviado: a requisição sai mesmo assim e o servidor recusa com `401`. Quem decide é o servidor, não o cliente deixando de tentar.
+
+Um detalhe da API vale conhecer: `CheckoutApiClient.withDio` **adiciona** um interceptor ao `Dio` recebido. Criar dois clientes sobre a mesma instância empilha interceptors em vez de substituí-los, e o primeiro continua injetando seu header — foi assim que um teste de token ausente passou a receber o token do teste anterior.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -139,7 +147,7 @@ cd functions
 npm install
 npm run build
 cd ..
-firebase emulators:start --only functions,firestore
+firebase emulators:start --only auth,functions,firestore
 ```
 
 E execute o aplicativo em outro, apontando para eles:
@@ -148,8 +156,11 @@ E execute o aplicativo em outro, apontando para eles:
 flutter devices
 cd apps/mobile
 flutter run -d <device-id> \
-  --dart-define=CHECKOUT_API_BASE_URL=http://10.0.2.2:5001/mediflow-learning/us-central1/api
+  --dart-define=CHECKOUT_API_BASE_URL=http://10.0.2.2:5001/mediflow-learning/us-central1/api \
+  --dart-define=USE_FIREBASE_EMULATORS=true
 ```
+
+A segunda variável faz o aplicativo chamar `useAuthEmulator` logo após `Firebase.initializeApp` e antes do login anônimo. Sem ela, o aplicativo autenticaria contra o Firebase real enquanto as functions validam contra o emulador — dois mundos diferentes, e todo pedido voltaria `401` por um motivo que não é o aparente.
 
 O endereço `10.0.2.2` vale para o emulador Android, que o usa como alias da máquina hospedeira. Em um dispositivo físico na mesma rede, troque pelo IP da máquina. O emulador do Firestore exige Java instalado; consulte o README de `functions/` para os detalhes.
 
@@ -168,7 +179,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 82 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) e o modo de manutenção controlado por configuração operacional — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 84 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional e o envio do token de autenticação como header `Bearer` — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 Vale registrar um limite dessa suíte: **nada aqui cobre a composição do `main()`**. Os testes de widget constroem `MainApp` diretamente, com repositórios de demonstração, então a ligação real entre `Dio*Repository`, outbox e decorators de performance não é exercitada por nenhum teste automatizado. Foi exatamente ali que a Aula 34 introduziu e corrigiu seu erro mais grave, com o outbox acidentalmente removido do caminho do app enquanto análise e testes seguiam verdes. A validação dessa camada continua sendo manual, contra os emuladores, e a forma de automatizá-la seria o pacote `integration_test`, ainda não adotado no projeto.
 

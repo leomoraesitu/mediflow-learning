@@ -18,7 +18,7 @@ void main() {
     fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient.withDio(dio);
+    apiClient = CheckoutApiClient.withDio(dio, tokenProvider: () async => 'test-token');
     repository = DioMedicationRepository(apiClient: apiClient);
     medication = Medication(ean: '1234567890123', name: 'Some Medication', unitPriceInCents: 10);
   });
