@@ -1,17 +1,17 @@
+import 'package:checkout_domain/checkout_domain.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/config/remote_config_operational_settings.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
-import 'package:flutter/services.dart';
-
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:checkout_domain/checkout_domain.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
@@ -25,11 +25,8 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_t
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_medication_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_prescription_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
-
-import 'package:firebase_core/firebase_core.dart';
-import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
-
 import 'package:mediflow_mobile/firebase_options.dart';
+import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
@@ -42,8 +39,14 @@ void main() async {
     );
   }
 
+  const useFirebaseEmulators = bool.fromEnvironment('USE_FIREBASE_EMULATORS');
+
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  if (useFirebaseEmulators) {
+    await FirebaseAuth.instance.useAuthEmulator('10.0.2.2', 9099);
+  }
 
   try {
     if (FirebaseAuth.instance.currentUser == null) {
@@ -61,6 +64,10 @@ void main() async {
   final apiClient = CheckoutApiClient(
     baseUrl: checkoutApiBaseUrl,
     timeout: settings.checkoutTimeout,
+    tokenProvider: () async {
+      final user = FirebaseAuth.instance.currentUser;
+      return user == null ? null : await user.getIdToken();
+    },
   );
 
   final outboxCheckoutRepository = OutboxCheckoutRepository(

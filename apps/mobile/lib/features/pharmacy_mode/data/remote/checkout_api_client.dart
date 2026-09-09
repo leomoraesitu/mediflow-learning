@@ -1,20 +1,45 @@
 import 'package:dio/dio.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failure.dart';
 
+typedef AuthTokenProvider = Future<String?> Function();
+
 final class CheckoutApiClient {
   final Dio _dio;
 
-  CheckoutApiClient({required String baseUrl, required Duration timeout})
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: timeout,
-          sendTimeout: timeout,
-          receiveTimeout: timeout,
-        ),
-      );
+  CheckoutApiClient({
+    required String baseUrl,
+    required Duration timeout,
+    required AuthTokenProvider tokenProvider,
+  }) : _dio = Dio(
+         BaseOptions(
+           baseUrl: baseUrl,
+           connectTimeout: timeout,
+           sendTimeout: timeout,
+           receiveTimeout: timeout,
+         ),
+       ) {
+    _addAuthInterceptor(tokenProvider);
+  }
 
-  CheckoutApiClient.withDio(Dio dio) : _dio = dio;
+  CheckoutApiClient.withDio(Dio dio, {required AuthTokenProvider tokenProvider}) : _dio = dio {
+    _addAuthInterceptor(tokenProvider);
+  }
+
+  void _addAuthInterceptor(AuthTokenProvider tokenProvider) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await tokenProvider();
+
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+
+          handler.next(options);
+        },
+      ),
+    );
+  }
 
   Future<Map<String, dynamic>> post(
     String path, {

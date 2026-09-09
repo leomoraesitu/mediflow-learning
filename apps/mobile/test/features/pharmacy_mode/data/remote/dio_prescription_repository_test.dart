@@ -18,7 +18,7 @@ void main() {
     fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient.withDio(dio);
+    apiClient = CheckoutApiClient.withDio(dio, tokenProvider: () async => 'test-token');
     repository = DioPrescriptionRepository(apiClient: apiClient);
     prescription = Prescription(reference: 'some-prescription');
   });
