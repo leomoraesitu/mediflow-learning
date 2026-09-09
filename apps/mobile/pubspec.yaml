@@ -31,6 +31,8 @@ dev_dependencies:
   bloc_test: ^10.0.0
   drift_dev: ^2.34.6
   build_runner: ^2.16.1
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
