@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/network_failure.dart';
 
-typedef AuthTokenProvider = Future<String?> Function();
+typedef AuthTokenProvider = Future<String?> Function({bool forceRefresh});
 
 final class CheckoutApiClient {
   final Dio _dio;
@@ -29,13 +29,41 @@ final class CheckoutApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await tokenProvider();
+          // Numa retentativa, o header já foi definido pelo onError com a
+          // credencial renovada. Reescrevê-lo aqui desfaria a renovação.
+          if (options.extra['authRetried'] == true) {
+            return handler.next(options);
+          }
 
+          final token = await tokenProvider();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-
           handler.next(options);
+        },
+
+        onError: (DioException e, handler) async {
+          final options = e.requestOptions;
+          final triedTwice = options.extra['authRetried'] == true;
+
+          if (e.response?.statusCode != 401 || triedTwice) {
+            return handler.next(e);
+          }
+
+          final token = await tokenProvider(forceRefresh: true);
+          if (token == null) {
+            return handler.next(e);
+          }
+
+          options.headers['Authorization'] = 'Bearer $token';
+          options.extra['authRetried'] = true;
+
+          try {
+            final response = await _dio.fetch<dynamic>(options);
+            handler.resolve(response);
+          } on DioException catch (retryError) {
+            handler.next(retryError);
+          }
         },
       ),
     );

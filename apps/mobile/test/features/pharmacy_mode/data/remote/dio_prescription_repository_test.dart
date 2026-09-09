@@ -18,53 +18,64 @@ void main() {
     fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
-    apiClient = CheckoutApiClient.withDio(dio, tokenProvider: () async => 'test-token');
+    apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+    );
     repository = DioPrescriptionRepository(apiClient: apiClient);
     prescription = Prescription(reference: 'some-prescription');
   });
 
   test('returns true when the API confirms the prescription is valid', () async {
-    fakeAdapter.mockedResponses['/prescriptions/validate'] = ResponseBody.fromString(
-      '{"isValid": true}',
-      200,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+    fakeAdapter.mockedResponses['/prescriptions/validate'] = [
+      ResponseBody.fromString(
+        '{"isValid": true}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
 
     expect(await repository.validate(prescription), isTrue);
   });
 
   test('returns false when the API confirms the prescription is invalid', () async {
-    fakeAdapter.mockedResponses['/prescriptions/validate'] = ResponseBody.fromString(
-      '{"isValid": false}',
-      200,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+    fakeAdapter.mockedResponses['/prescriptions/validate'] = [
+      ResponseBody.fromString(
+        '{"isValid": false}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
 
     expect(await repository.validate(prescription), isFalse);
   });
   test('throws an exception when the API responds with a server error', () async {
-    fakeAdapter.mockedResponses['/prescriptions/validate'] = ResponseBody.fromString(
-      'Internal Server Error',
-      500,
-      headers: {
-        Headers.contentTypeHeader: [Headers.textPlainContentType],
-      },
-    );
+    fakeAdapter.mockedResponses['/prescriptions/validate'] = [
+      ResponseBody.fromString(
+        'Internal Server Error',
+        500,
+        headers: {
+          Headers.contentTypeHeader: [Headers.textPlainContentType],
+        },
+      ),
+    ];
 
     expect(() async => repository.validate(prescription), throwsA(isA<ServerUnavailableFailure>()));
   });
   test('throws an exception when the response body is missing isValid', () async {
-    fakeAdapter.mockedResponses['/prescriptions/validate'] = ResponseBody.fromString(
-      '{"someOtherField": true}',
-      200,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+    fakeAdapter.mockedResponses['/prescriptions/validate'] = [
+      ResponseBody.fromString(
+        '{"someOtherField": true}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
 
     expect(() async => repository.validate(prescription), throwsA(isA<Exception>()));
   });
