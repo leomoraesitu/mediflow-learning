@@ -12,50 +12,42 @@ void main() {
     name: 'Medicamento demonstrativo',
     unitPriceInCents: 2500,
   );
-  testWidgets(
-    'submits the prescription and advances checkout to validation step',
-    (tester) async {
-      final cubit = CheckoutCubit(
-        initialSession: CheckoutSession(
-          id: 'session-001',
-          availableBalanceInCents: 25000,
-          prescription: null,
-          medications: const [medication],
-          status: CheckoutStatus.collectingMedication,
-        ),
-        stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const DemoPrescriptionRepository(),
-        medicationRepository: const DemoMedicationRepository(),
-        checkoutRepository: DemoCheckoutRepository(),
-      );
+  testWidgets('submits the prescription and advances checkout to validation step', (tester) async {
+    final cubit = CheckoutCubit(
+      initialSession: CheckoutSession(
+        id: 'session-001',
+        availableBalanceInCents: 25000,
+        prescription: null,
+        medications: const [medication],
+        status: CheckoutStatus.collectingMedication,
+      ),
+      stateMachine: const CheckoutStateMachine(),
+      prescriptionRepository: const DemoPrescriptionRepository(),
+      medicationRepository: const DemoMedicationRepository(),
+      checkoutRepository: DemoCheckoutRepository(),
+    );
 
-      addTearDown(cubit.close);
+    addTearDown(cubit.close);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<CheckoutCubit>.value(
-            value: cubit,
-            child: const PharmacyModePage(),
-          ),
-        ),
-      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
+      ),
+    );
 
-      await tester.enterText(find.byType(TextFormField).first, 'RX-001');
+    await tester.enterText(find.byType(TextFormField).first, 'RX-001');
 
-      expect(find.text('Validar compra'), findsOneWidget);
+    expect(find.text('Validar compra'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Validar compra'));
-      await tester.tap(find.text('Validar compra'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Validar compra'));
+    await tester.tap(find.text('Validar compra'));
+    await tester.pumpAndSettle();
 
-      expect(cubit.state.prescription?.reference, 'RX-001');
-      expect(cubit.state.status, CheckoutStatus.checkingEligibility);
-      expect(find.text('Etapa 2 de 4: Validação da compra'), findsOneWidget);
-    },
-  );
-  testWidgets('keeps checkout submission disabled without medications', (
-    tester,
-  ) async {
+    expect(cubit.state.prescription?.reference, 'RX-001');
+    expect(cubit.state.status, CheckoutStatus.checkingEligibility);
+    expect(find.text('Etapa 2 de 4: Validação da compra'), findsOneWidget);
+  });
+  testWidgets('keeps checkout submission disabled without medications', (tester) async {
     final cubit = CheckoutCubit(
       initialSession: CheckoutSession(
         id: 'session-001',
@@ -74,10 +66,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<CheckoutCubit>.value(
-          value: cubit,
-          child: const PharmacyModePage(),
-        ),
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
       ),
     );
 

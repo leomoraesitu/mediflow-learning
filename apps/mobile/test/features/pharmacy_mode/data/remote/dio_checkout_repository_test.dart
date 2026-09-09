@@ -16,8 +16,7 @@ void main() {
 
   setUp(() {
     fakeAdapter = FakeHttpClientAdapter();
-    dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
-      ..httpClientAdapter = fakeAdapter;
+    dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
     apiClient = CheckoutApiClient.withDio(dio);
     repository = DioCheckoutRepository(apiClient: apiClient);
@@ -30,150 +29,116 @@ void main() {
     );
   });
 
-  test(
-    'returns the remote checkout id when the API confirms creation',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
-        '{"id": "remote-checkout-id"}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
+  test('returns the remote checkout id when the API confirms creation', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
-      final remoteCheckoutId = await repository.create(session);
-      expect(remoteCheckoutId, 'remote-checkout-id');
-    },
-  );
-  test(
-    'throws an exception when the API responds with a server error',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
-        'Internal Server Error',
-        500,
-        headers: {
-          Headers.contentTypeHeader: [Headers.textPlainContentType],
-        },
-      );
+    final remoteCheckoutId = await repository.create(session);
+    expect(remoteCheckoutId, 'remote-checkout-id');
+  });
+  test('throws an exception when the API responds with a server error', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      'Internal Server Error',
+      500,
+      headers: {
+        Headers.contentTypeHeader: [Headers.textPlainContentType],
+      },
+    );
 
-      expect(
-        () async => await repository.create(session),
-        throwsA(isA<ServerUnavailableFailure>()),
-      );
-    },
-  );
-  test(
-    'throws an exception when the response body is missing the id',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
-        '{"name": "Test Checkout"}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
+    expect(() async => await repository.create(session), throwsA(isA<ServerUnavailableFailure>()));
+  });
+  test('throws an exception when the response body is missing the id', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"name": "Test Checkout"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
-      expect(
-        () async => await repository.create(session),
-        throwsA(isA<Exception>()),
-      );
-    },
-  );
+    expect(() async => await repository.create(session), throwsA(isA<Exception>()));
+  });
 
-  test(
-    'returns the checkout session when the API responds with valid data',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] =
-          ResponseBody.fromString(
-            '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "paid", "medications": []}',
-            200,
-            headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
-            },
-          );
+  test('returns the checkout session when the API responds with valid data', () async {
+    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "paid", "medications": []}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
-      final checkoutSession = await repository.getById('remote-checkout-id');
-      expect(checkoutSession.id, 'remote-checkout-id');
-      expect(checkoutSession.availableBalanceInCents, 1000);
-      expect(checkoutSession.status, CheckoutStatus.paid);
-    },
-  );
-  test(
-    'throws an exception when the API responds with a server error for getById',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] =
-          ResponseBody.fromString(
-            'Internal Server Error',
-            500,
-            headers: {
-              Headers.contentTypeHeader: [Headers.textPlainContentType],
-            },
-          );
+    final checkoutSession = await repository.getById('remote-checkout-id');
+    expect(checkoutSession.id, 'remote-checkout-id');
+    expect(checkoutSession.availableBalanceInCents, 1000);
+    expect(checkoutSession.status, CheckoutStatus.paid);
+  });
+  test('throws an exception when the API responds with a server error for getById', () async {
+    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] = ResponseBody.fromString(
+      'Internal Server Error',
+      500,
+      headers: {
+        Headers.contentTypeHeader: [Headers.textPlainContentType],
+      },
+    );
 
-      expect(
-        () async => await repository.getById('remote-checkout-id'),
-        throwsA(isA<ServerUnavailableFailure>()),
-      );
-    },
-  );
-  test(
-    'throws an exception when the response body has an invalid status',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] =
-          ResponseBody.fromString(
-            '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "invalid", "medications": []}',
-            200,
-            headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
-            },
-          );
+    expect(
+      () async => await repository.getById('remote-checkout-id'),
+      throwsA(isA<ServerUnavailableFailure>()),
+    );
+  });
+  test('throws an exception when the response body has an invalid status', () async {
+    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "invalid", "medications": []}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
-      expect(
-        () async => await repository.getById('remote-checkout-id'),
-        throwsA(isA<Exception>()),
-      );
-    },
-  );
+    expect(() async => await repository.getById('remote-checkout-id'), throwsA(isA<Exception>()));
+  });
   test('throws an exception when the response body is a client error', () {
-    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] =
-        ResponseBody.fromString(
-          '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "invalid", "medications": []}',
-          400,
-          headers: {
-            Headers.contentTypeHeader: [Headers.jsonContentType],
-          },
-        );
+    fakeAdapter.mockedResponses['/checkouts/remote-checkout-id'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id", "availableBalanceInCents": 1000, "status": "invalid", "medications": []}',
+      400,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
     expect(
       () async => await repository.getById('remote-checkout-id'),
       throwsA(isA<PermanentFailure>()),
     );
   });
-  test(
-    'sends the session idempotency key as a header when creating a checkout',
-    () async {
-      fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
-        '{"id": "remote-checkout-id"}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      );
+  test('sends the session idempotency key as a header when creating a checkout', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = ResponseBody.fromString(
+      '{"id": "remote-checkout-id"}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
 
-      final sessionWithIdempotencyKey = CheckoutSession(
-        id: 'session-id',
-        availableBalanceInCents: 1000,
-        prescription: null,
-        medications: [],
-        status: CheckoutStatus.paid,
-        idempotencyKey: 'unique-key',
-      );
+    final sessionWithIdempotencyKey = CheckoutSession(
+      id: 'session-id',
+      availableBalanceInCents: 1000,
+      prescription: null,
+      medications: [],
+      status: CheckoutStatus.paid,
+      idempotencyKey: 'unique-key',
+    );
 
-      await repository.create(sessionWithIdempotencyKey);
+    await repository.create(sessionWithIdempotencyKey);
 
-      final requestOptions = fakeAdapter.capturedHeaders['/checkouts'];
-      expect(requestOptions, isNotNull);
-      expect(requestOptions!['Idempotency-Key'], 'unique-key');
-    },
-  );
+    final requestOptions = fakeAdapter.capturedHeaders['/checkouts'];
+    expect(requestOptions, isNotNull);
+    expect(requestOptions!['Idempotency-Key'], 'unique-key');
+  });
 }

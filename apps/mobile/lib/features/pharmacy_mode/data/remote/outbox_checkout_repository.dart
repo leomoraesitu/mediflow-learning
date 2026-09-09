@@ -8,19 +8,14 @@ final class OutboxCheckoutRepository implements CheckoutRepository {
   final CheckoutRepository _inner;
   final CheckoutDatabase _database;
 
-  const OutboxCheckoutRepository({
-    required this._inner,
-    required this._database,
-  });
+  const OutboxCheckoutRepository({required this._inner, required this._database});
 
   @override
   Future<String> create(CheckoutSession session) async {
     final idempotencyKey = session.idempotencyKey;
 
     if (idempotencyKey == null) {
-      throw StateError(
-        'CheckoutSession must have an idempotencyKey before create().',
-      );
+      throw StateError('CheckoutSession must have an idempotencyKey before create().');
     }
 
     final snapshot = CheckoutSessionSnapshot.fromDomain(session);

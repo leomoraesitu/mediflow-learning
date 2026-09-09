@@ -62,30 +62,27 @@ void main() {
     expect(entries.single.operationType, 'createCheckout');
     expect(entries.single.payload, '{"id":"session-01"}');
   });
-  test(
-    'updates an outbox event enqueued twice with the same idempotency key',
-    () async {
-      final database = CheckoutDatabase(NativeDatabase.memory());
-      addTearDown(database.close);
+  test('updates an outbox event enqueued twice with the same idempotency key', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
 
-      await database.enqueueOutboxEvent(
-        idempotencyKey: 'key-01',
-        operationType: 'createCheckout',
-        payload: '{"attempt":1}',
-      );
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: '{"attempt":1}',
+    );
 
-      await database.enqueueOutboxEvent(
-        idempotencyKey: 'key-01',
-        operationType: 'createCheckout',
-        payload: '{"attempt":2}',
-      );
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: '{"attempt":2}',
+    );
 
-      final entries = await database.readPendingOutboxEvents();
+    final entries = await database.readPendingOutboxEvents();
 
-      expect(entries.length, 1);
-      expect(entries.single.payload, '{"attempt":2}');
-    },
-  );
+    expect(entries.length, 1);
+    expect(entries.single.payload, '{"attempt":2}');
+  });
   test('removes an outbox event after confirmation', () async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     addTearDown(database.close);

@@ -5,10 +5,7 @@ final class PerformanceTracingCheckoutRepository implements CheckoutRepository {
   final CheckoutRepository _inner;
   final FirebasePerformance _performance;
 
-  const PerformanceTracingCheckoutRepository({
-    required this._inner,
-    required this._performance,
-  });
+  const PerformanceTracingCheckoutRepository({required this._inner, required this._performance});
 
   @override
   Future<String> create(CheckoutSession session) async {

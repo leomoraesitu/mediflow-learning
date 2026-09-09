@@ -12,11 +12,7 @@ void main() {
       availableBalanceInCents: 18000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.creatingPayment,
     );
@@ -91,11 +87,7 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: null,
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.collectingMedication,
     );
@@ -116,78 +108,61 @@ void main() {
     final persistedSnapshot = await storage.load();
 
     expect(persistedSnapshot, isNotNull);
-    expect(
-      persistedSnapshot!.toDomain().status,
-      CheckoutStatus.checkingEligibility,
-    );
+    expect(persistedSnapshot!.toDomain().status, CheckoutStatus.checkingEligibility);
     expect(persistedSnapshot.toDomain().prescription?.reference, 'RX-001');
   });
 
-  test(
-    'persists the checkout status after a retry from a recoverable failure',
-    () async {
-      final storage = InMemoryCheckoutSessionStorage();
+  test('persists the checkout status after a retry from a recoverable failure', () async {
+    final storage = InMemoryCheckoutSessionStorage();
 
-      final fallbackSession = CheckoutSession(
-        id: 'new-session',
-        availableBalanceInCents: 25000,
-        prescription: null,
-        medications: const [
-          Medication(
-            ean: '7891000000011',
-            name: 'Medicamento demonstrativo',
-            unitPriceInCents: 2500,
-          ),
-        ],
-        status: CheckoutStatus.creatingPayment,
-      );
+    final fallbackSession = CheckoutSession(
+      id: 'new-session',
+      availableBalanceInCents: 25000,
+      prescription: null,
+      medications: const [
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
+      ],
+      status: CheckoutStatus.creatingPayment,
+    );
 
-      final cubit = await CheckoutCubit.restore(
-        fallbackSession: fallbackSession,
-        storage: storage,
-        stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
+    final cubit = await CheckoutCubit.restore(
+      fallbackSession: fallbackSession,
+      storage: storage,
+      stateMachine: const CheckoutStateMachine(),
+      prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+      medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+      checkoutRepository: _FakeCheckoutRepository(
+        createdCheckoutId: 'remote-checkout-id',
+        createError: Exception('Falha de rede simulada'),
+        getByIdError: Exception('Falha de rede simulada'),
+        checkoutById: CheckoutSession(
+          id: 'remote-checkout-id',
+          availableBalanceInCents: 25000,
+          prescription: const Prescription(reference: 'RX-001'),
+          medications: const [
+            Medication(
+              ean: '7891000000011',
+              name: 'Medicamento demonstrativo',
+              unitPriceInCents: 2500,
+            ),
+          ],
+          status: CheckoutStatus.paid,
         ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-id',
-          createError: Exception('Falha de rede simulada'),
-          getByIdError: Exception('Falha de rede simulada'),
-          checkoutById: CheckoutSession(
-            id: 'remote-checkout-id',
-            availableBalanceInCents: 25000,
-            prescription: const Prescription(reference: 'RX-001'),
-            medications: const [
-              Medication(
-                ean: '7891000000011',
-                name: 'Medicamento demonstrativo',
-                unitPriceInCents: 2500,
-              ),
-            ],
-            status: CheckoutStatus.paid,
-          ),
-        ),
-      );
+      ),
+    );
 
-      addTearDown(cubit.close);
+    addTearDown(cubit.close);
 
-      await cubit.createCheckout();
+    await cubit.createCheckout();
 
-      cubit.retry();
+    cubit.retry();
 
-      final persistedSnapshot = await storage.load();
+    final persistedSnapshot = await storage.load();
 
-      expect(persistedSnapshot, isNotNull);
-      expect(
-        persistedSnapshot!.toDomain().status,
-        CheckoutStatus.creatingPayment,
-      );
-      expect(persistedSnapshot.toDomain().status, cubit.state.status);
-    },
-  );
+    expect(persistedSnapshot, isNotNull);
+    expect(persistedSnapshot!.toDomain().status, CheckoutStatus.creatingPayment);
+    expect(persistedSnapshot.toDomain().status, cubit.state.status);
+  });
 }
 
 final class _FakePrescriptionRepository implements PrescriptionRepository {

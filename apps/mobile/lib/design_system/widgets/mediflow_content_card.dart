@@ -18,10 +18,7 @@ class MediFlowContentCard extends StatelessWidget {
             width: double.infinity,
             child: Card(
               margin: const EdgeInsets.all(AppSpacing.lg),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: child,
-              ),
+              child: Padding(padding: const EdgeInsets.all(AppSpacing.lg), child: child),
             ),
           ),
         ),

@@ -43,9 +43,7 @@ final class ServerUnavailableFailure extends NetworkFailure {
   const ServerUnavailableFailure(super.message);
 
   const ServerUnavailableFailure.defaultMessage()
-    : super(
-        'O servidor está indisponível no momento. Por favor, tente novamente mais tarde.',
-      );
+    : super('O servidor está indisponível no momento. Por favor, tente novamente mais tarde.');
 }
 
 final class ConnectivityFailure extends NetworkFailure {

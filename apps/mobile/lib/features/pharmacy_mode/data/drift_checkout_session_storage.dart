@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'checkout_database.dart';
-import 'checkout_session_snapshot.dart';
-import 'checkout_session_storage.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_storage.dart';
 
 final class DriftCheckoutSessionStorage implements CheckoutSessionStorage {
   final CheckoutDatabase _database;

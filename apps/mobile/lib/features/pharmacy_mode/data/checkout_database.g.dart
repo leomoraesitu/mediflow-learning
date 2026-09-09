@@ -18,9 +18,7 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _payloadMeta = const VerificationMeta(
-    'payload',
-  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta('payload');
   @override
   late final GeneratedColumn<String> payload = GeneratedColumn<String>(
     'payload',
@@ -47,10 +45,7 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
     if (data.containsKey('payload')) {
-      context.handle(
-        _payloadMeta,
-        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
-      );
+      context.handle(_payloadMeta, payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
     } else if (isInserting) {
       context.missing(_payloadMeta);
     }
@@ -63,10 +58,7 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
   CheckoutSessionRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CheckoutSessionRecord(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
+      id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       payload: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
@@ -80,8 +72,7 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
   }
 }
 
-class CheckoutSessionRecord extends DataClass
-    implements Insertable<CheckoutSessionRecord> {
+class CheckoutSessionRecord extends DataClass implements Insertable<CheckoutSessionRecord> {
   final int id;
   final String payload;
   const CheckoutSessionRecord({required this.id, required this.payload});
@@ -94,16 +85,10 @@ class CheckoutSessionRecord extends DataClass
   }
 
   CheckoutSessionRecordsCompanion toCompanion(bool nullToAbsent) {
-    return CheckoutSessionRecordsCompanion(
-      id: Value(id),
-      payload: Value(payload),
-    );
+    return CheckoutSessionRecordsCompanion(id: Value(id), payload: Value(payload));
   }
 
-  factory CheckoutSessionRecord.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory CheckoutSessionRecord.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CheckoutSessionRecord(
       id: serializer.fromJson<int>(json['id']),
@@ -120,13 +105,8 @@ class CheckoutSessionRecord extends DataClass
   }
 
   CheckoutSessionRecord copyWith({int? id, String? payload}) =>
-      CheckoutSessionRecord(
-        id: id ?? this.id,
-        payload: payload ?? this.payload,
-      );
-  CheckoutSessionRecord copyWithCompanion(
-    CheckoutSessionRecordsCompanion data,
-  ) {
+      CheckoutSessionRecord(id: id ?? this.id, payload: payload ?? this.payload);
+  CheckoutSessionRecord copyWithCompanion(CheckoutSessionRecordsCompanion data) {
     return CheckoutSessionRecord(
       id: data.id.present ? data.id.value : this.id,
       payload: data.payload.present ? data.payload.value : this.payload,
@@ -147,41 +127,27 @@ class CheckoutSessionRecord extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CheckoutSessionRecord &&
-          other.id == this.id &&
-          other.payload == this.payload);
+      (other is CheckoutSessionRecord && other.id == this.id && other.payload == this.payload);
 }
 
-class CheckoutSessionRecordsCompanion
-    extends UpdateCompanion<CheckoutSessionRecord> {
+class CheckoutSessionRecordsCompanion extends UpdateCompanion<CheckoutSessionRecord> {
   final Value<int> id;
   final Value<String> payload;
   const CheckoutSessionRecordsCompanion({
     this.id = const Value.absent(),
     this.payload = const Value.absent(),
   });
-  CheckoutSessionRecordsCompanion.insert({
-    this.id = const Value.absent(),
-    required String payload,
-  }) : payload = Value(payload);
+  CheckoutSessionRecordsCompanion.insert({this.id = const Value.absent(), required String payload})
+    : payload = Value(payload);
   static Insertable<CheckoutSessionRecord> custom({
     Expression<int>? id,
     Expression<String>? payload,
   }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (payload != null) 'payload': payload,
-    });
+    return RawValuesInsertable({if (id != null) 'id': id, if (payload != null) 'payload': payload});
   }
 
-  CheckoutSessionRecordsCompanion copyWith({
-    Value<int>? id,
-    Value<String>? payload,
-  }) {
-    return CheckoutSessionRecordsCompanion(
-      id: id ?? this.id,
-      payload: payload ?? this.payload,
-    );
+  CheckoutSessionRecordsCompanion copyWith({Value<int>? id, Value<String>? payload}) {
+    return CheckoutSessionRecordsCompanion(id: id ?? this.id, payload: payload ?? this.payload);
   }
 
   @override
@@ -206,15 +172,12 @@ class CheckoutSessionRecordsCompanion
   }
 }
 
-class $OutboxEventsTable extends OutboxEvents
-    with TableInfo<$OutboxEventsTable, OutboxEvent> {
+class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable, OutboxEvent> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $OutboxEventsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idempotencyKeyMeta = const VerificationMeta(
-    'idempotencyKey',
-  );
+  static const VerificationMeta _idempotencyKeyMeta = const VerificationMeta('idempotencyKey');
   @override
   late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
     'idempotency_key',
@@ -223,9 +186,7 @@ class $OutboxEventsTable extends OutboxEvents
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _operationTypeMeta = const VerificationMeta(
-    'operationType',
-  );
+  static const VerificationMeta _operationTypeMeta = const VerificationMeta('operationType');
   @override
   late final GeneratedColumn<String> operationType = GeneratedColumn<String>(
     'operation_type',
@@ -234,9 +195,7 @@ class $OutboxEventsTable extends OutboxEvents
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _payloadMeta = const VerificationMeta(
-    'payload',
-  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta('payload');
   @override
   late final GeneratedColumn<String> payload = GeneratedColumn<String>(
     'payload',
@@ -245,9 +204,7 @@ class $OutboxEventsTable extends OutboxEvents
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta('createdAt');
   @override
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
     'created_at',
@@ -258,12 +215,7 @@ class $OutboxEventsTable extends OutboxEvents
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    idempotencyKey,
-    operationType,
-    payload,
-    createdAt,
-  ];
+  List<GeneratedColumn> get $columns => [idempotencyKey, operationType, payload, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -279,10 +231,7 @@ class $OutboxEventsTable extends OutboxEvents
     if (data.containsKey('idempotency_key')) {
       context.handle(
         _idempotencyKeyMeta,
-        idempotencyKey.isAcceptableOrUnknown(
-          data['idempotency_key']!,
-          _idempotencyKeyMeta,
-        ),
+        idempotencyKey.isAcceptableOrUnknown(data['idempotency_key']!, _idempotencyKeyMeta),
       );
     } else if (isInserting) {
       context.missing(_idempotencyKeyMeta);
@@ -290,19 +239,13 @@ class $OutboxEventsTable extends OutboxEvents
     if (data.containsKey('operation_type')) {
       context.handle(
         _operationTypeMeta,
-        operationType.isAcceptableOrUnknown(
-          data['operation_type']!,
-          _operationTypeMeta,
-        ),
+        operationType.isAcceptableOrUnknown(data['operation_type']!, _operationTypeMeta),
       );
     } else if (isInserting) {
       context.missing(_operationTypeMeta);
     }
     if (data.containsKey('payload')) {
-      context.handle(
-        _payloadMeta,
-        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
-      );
+      context.handle(_payloadMeta, payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
     } else if (isInserting) {
       context.missing(_payloadMeta);
     }
@@ -376,10 +319,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
     );
   }
 
-  factory OutboxEvent.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
+  factory OutboxEvent.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutboxEvent(
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
@@ -412,12 +352,8 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   );
   OutboxEvent copyWithCompanion(OutboxEventsCompanion data) {
     return OutboxEvent(
-      idempotencyKey: data.idempotencyKey.present
-          ? data.idempotencyKey.value
-          : this.idempotencyKey,
-      operationType: data.operationType.present
-          ? data.operationType.value
-          : this.operationType,
+      idempotencyKey: data.idempotencyKey.present ? data.idempotencyKey.value : this.idempotencyKey,
+      operationType: data.operationType.present ? data.operationType.value : this.operationType,
       payload: data.payload.present ? data.payload.value : this.payload,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -435,8 +371,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(idempotencyKey, operationType, payload, createdAt);
+  int get hashCode => Object.hash(idempotencyKey, operationType, payload, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -538,29 +473,21 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
 abstract class _$CheckoutDatabase extends GeneratedDatabase {
   _$CheckoutDatabase(QueryExecutor e) : super(e);
   $CheckoutDatabaseManager get managers => $CheckoutDatabaseManager(this);
-  late final $CheckoutSessionRecordsTable checkoutSessionRecords =
-      $CheckoutSessionRecordsTable(this);
+  late final $CheckoutSessionRecordsTable checkoutSessionRecords = $CheckoutSessionRecordsTable(
+    this,
+  );
   late final $OutboxEventsTable outboxEvents = $OutboxEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [
-    checkoutSessionRecords,
-    outboxEvents,
-  ];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [checkoutSessionRecords, outboxEvents];
 }
 
 typedef $$CheckoutSessionRecordsTableCreateCompanionBuilder =
-    CheckoutSessionRecordsCompanion Function({
-      Value<int> id,
-      required String payload,
-    });
+    CheckoutSessionRecordsCompanion Function({Value<int> id, required String payload});
 typedef $$CheckoutSessionRecordsTableUpdateCompanionBuilder =
-    CheckoutSessionRecordsCompanion Function({
-      Value<int> id,
-      Value<String> payload,
-    });
+    CheckoutSessionRecordsCompanion Function({Value<int> id, Value<String> payload});
 
 class $$CheckoutSessionRecordsTableFilterComposer
     extends Composer<_$CheckoutDatabase, $CheckoutSessionRecordsTable> {
@@ -571,15 +498,11 @@ class $$CheckoutSessionRecordsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get payload => $composableBuilder(
-    column: $table.payload,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => ColumnFilters(column));
 }
 
 class $$CheckoutSessionRecordsTableOrderingComposer
@@ -591,15 +514,11 @@ class $$CheckoutSessionRecordsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get payload => $composableBuilder(
-    column: $table.payload,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => ColumnOrderings(column));
 }
 
 class $$CheckoutSessionRecordsTableAnnotationComposer
@@ -611,8 +530,7 @@ class $$CheckoutSessionRecordsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<int> get id => $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => column);
@@ -631,11 +549,7 @@ class $$CheckoutSessionRecordsTableTableManager
           $$CheckoutSessionRecordsTableUpdateCompanionBuilder,
           (
             CheckoutSessionRecord,
-            BaseReferences<
-              _$CheckoutDatabase,
-              $CheckoutSessionRecordsTable,
-              CheckoutSessionRecord
-            >,
+            BaseReferences<_$CheckoutDatabase, $CheckoutSessionRecordsTable, CheckoutSessionRecord>,
           ),
           CheckoutSessionRecord,
           PrefetchHooks Function()
@@ -648,39 +562,23 @@ class $$CheckoutSessionRecordsTableTableManager
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$CheckoutSessionRecordsTableFilterComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$CheckoutSessionRecordsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$CheckoutSessionRecordsTableOrderingComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$CheckoutSessionRecordsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$CheckoutSessionRecordsTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
+              $$CheckoutSessionRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> payload = const Value.absent(),
           }) => CheckoutSessionRecordsCompanion(id: id, payload: payload),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String payload,
-              }) => CheckoutSessionRecordsCompanion.insert(
-                id: id,
-                payload: payload,
-              ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String payload,
+          }) => CheckoutSessionRecordsCompanion.insert(id: id, payload: payload),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<
-                    $CheckoutSessionRecordsTable,
-                    CheckoutSessionRecord
-                  >(table),
+                  e.readTable<$CheckoutSessionRecordsTable, CheckoutSessionRecord>(table),
                   BaseReferences<
                     _$CheckoutDatabase,
                     $CheckoutSessionRecordsTable,
@@ -706,34 +604,27 @@ typedef $$CheckoutSessionRecordsTableProcessedTableManager =
       $$CheckoutSessionRecordsTableUpdateCompanionBuilder,
       (
         CheckoutSessionRecord,
-        BaseReferences<
-          _$CheckoutDatabase,
-          $CheckoutSessionRecordsTable,
-          CheckoutSessionRecord
-        >,
+        BaseReferences<_$CheckoutDatabase, $CheckoutSessionRecordsTable, CheckoutSessionRecord>,
       ),
       CheckoutSessionRecord,
       PrefetchHooks Function()
     >;
-typedef $$OutboxEventsTableCreateCompanionBuilder =
-    OutboxEventsCompanion Function({
-      required String idempotencyKey,
-      required String operationType,
-      required String payload,
-      Value<DateTime> createdAt,
-      Value<int> rowid,
-    });
-typedef $$OutboxEventsTableUpdateCompanionBuilder =
-    OutboxEventsCompanion Function({
-      Value<String> idempotencyKey,
-      Value<String> operationType,
-      Value<String> payload,
-      Value<DateTime> createdAt,
-      Value<int> rowid,
-    });
+typedef $$OutboxEventsTableCreateCompanionBuilder = OutboxEventsCompanion Function({
+  required String idempotencyKey,
+  required String operationType,
+  required String payload,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$OutboxEventsTableUpdateCompanionBuilder = OutboxEventsCompanion Function({
+  Value<String> idempotencyKey,
+  Value<String> operationType,
+  Value<String> payload,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
 
-class $$OutboxEventsTableFilterComposer
-    extends Composer<_$CheckoutDatabase, $OutboxEventsTable> {
+class $$OutboxEventsTableFilterComposer extends Composer<_$CheckoutDatabase, $OutboxEventsTable> {
   $$OutboxEventsTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -741,29 +632,20 @@ class $$OutboxEventsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get idempotencyKey => $composableBuilder(
-    column: $table.idempotencyKey,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get idempotencyKey =>
+      $composableBuilder(column: $table.idempotencyKey, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get operationType => $composableBuilder(
-    column: $table.operationType,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get operationType =>
+      $composableBuilder(column: $table.operationType, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get payload => $composableBuilder(
-    column: $table.payload,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnFilters<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
 }
 
-class $$OutboxEventsTableOrderingComposer
-    extends Composer<_$CheckoutDatabase, $OutboxEventsTable> {
+class $$OutboxEventsTableOrderingComposer extends Composer<_$CheckoutDatabase, $OutboxEventsTable> {
   $$OutboxEventsTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -781,15 +663,11 @@ class $$OutboxEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get payload => $composableBuilder(
-    column: $table.payload,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
+  ColumnOrderings<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$OutboxEventsTableAnnotationComposer
@@ -801,15 +679,11 @@ class $$OutboxEventsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
-    column: $table.idempotencyKey,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get idempotencyKey =>
+      $composableBuilder(column: $table.idempotencyKey, builder: (column) => column);
 
-  GeneratedColumn<String> get operationType => $composableBuilder(
-    column: $table.operationType,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get operationType =>
+      $composableBuilder(column: $table.operationType, builder: (column) => column);
 
   GeneratedColumn<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => column);
@@ -829,24 +703,17 @@ class $$OutboxEventsTableTableManager
           $$OutboxEventsTableAnnotationComposer,
           $$OutboxEventsTableCreateCompanionBuilder,
           $$OutboxEventsTableUpdateCompanionBuilder,
-          (
-            OutboxEvent,
-            BaseReferences<_$CheckoutDatabase, $OutboxEventsTable, OutboxEvent>,
-          ),
+          (OutboxEvent, BaseReferences<_$CheckoutDatabase, $OutboxEventsTable, OutboxEvent>),
           OutboxEvent,
           PrefetchHooks Function()
         > {
-  $$OutboxEventsTableTableManager(
-    _$CheckoutDatabase db,
-    $OutboxEventsTable table,
-  ) : super(
+  $$OutboxEventsTableTableManager(_$CheckoutDatabase db, $OutboxEventsTable table)
+    : super(
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$OutboxEventsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$OutboxEventsTableOrderingComposer($db: db, $table: table),
+          createFilteringComposer: () => $$OutboxEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () => $$OutboxEventsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$OutboxEventsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
@@ -881,11 +748,7 @@ class $$OutboxEventsTableTableManager
               .map(
                 (e) => (
                   e.readTable<$OutboxEventsTable, OutboxEvent>(table),
-                  BaseReferences<
-                    _$CheckoutDatabase,
-                    $OutboxEventsTable,
-                    OutboxEvent
-                  >(db, table, e),
+                  BaseReferences<_$CheckoutDatabase, $OutboxEventsTable, OutboxEvent>(db, table, e),
                 ),
               )
               .toList(),
@@ -904,10 +767,7 @@ typedef $$OutboxEventsTableProcessedTableManager =
       $$OutboxEventsTableAnnotationComposer,
       $$OutboxEventsTableCreateCompanionBuilder,
       $$OutboxEventsTableUpdateCompanionBuilder,
-      (
-        OutboxEvent,
-        BaseReferences<_$CheckoutDatabase, $OutboxEventsTable, OutboxEvent>,
-      ),
+      (OutboxEvent, BaseReferences<_$CheckoutDatabase, $OutboxEventsTable, OutboxEvent>),
       OutboxEvent,
       PrefetchHooks Function()
     >;
@@ -916,10 +776,7 @@ class $CheckoutDatabaseManager {
   final _$CheckoutDatabase _db;
   $CheckoutDatabaseManager(this._db);
   $$CheckoutSessionRecordsTableTableManager get checkoutSessionRecords =>
-      $$CheckoutSessionRecordsTableTableManager(
-        _db,
-        _db.checkoutSessionRecords,
-      );
+      $$CheckoutSessionRecordsTableTableManager(_db, _db.checkoutSessionRecords);
   $$OutboxEventsTableTableManager get outboxEvents =>
       $$OutboxEventsTableTableManager(_db, _db.outboxEvents);
 }

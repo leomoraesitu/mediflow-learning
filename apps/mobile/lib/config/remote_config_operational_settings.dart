@@ -12,24 +12,19 @@ class RemoteConfigOperationalSettings implements OperationalSettings {
   static const String _maintenanceMessageKey = 'maintenance_message';
   static const String _checkoutTimeoutMsKey = 'checkout_timeout_ms';
 
-  static Future<RemoteConfigOperationalSettings> load(
-    FirebaseRemoteConfig remoteConfig,
-  ) async {
+  static Future<RemoteConfigOperationalSettings> load(FirebaseRemoteConfig remoteConfig) async {
     final settings = RemoteConfigOperationalSettings(remoteConfig);
 
     await remoteConfig.setConfigSettings(
       RemoteConfigSettings(
         fetchTimeout: const Duration(seconds: 10),
-        minimumFetchInterval: kDebugMode
-            ? Duration.zero
-            : const Duration(hours: 12),
+        minimumFetchInterval: kDebugMode ? Duration.zero : const Duration(hours: 12),
       ),
     );
 
     await remoteConfig.setDefaults(const <String, Object>{
       _maintenanceModeKey: false,
-      _maintenanceMessageKey:
-          'O Modo Farmácia está temporariamente indisponível.',
+      _maintenanceMessageKey: 'O Modo Farmácia está temporariamente indisponível.',
       _checkoutTimeoutMsKey: 8000,
     });
 
@@ -49,8 +44,7 @@ class RemoteConfigOperationalSettings implements OperationalSettings {
   bool get maintenanceMode => _remoteConfig.getBool(_maintenanceModeKey);
 
   @override
-  String get maintenanceMessage =>
-      _remoteConfig.getString(_maintenanceMessageKey);
+  String get maintenanceMessage => _remoteConfig.getString(_maintenanceMessageKey);
 
   @override
   Duration get checkoutTimeout =>

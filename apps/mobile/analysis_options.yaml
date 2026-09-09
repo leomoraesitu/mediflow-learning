@@ -1,5 +1,11 @@
 include: package:flutter_lints/flutter.yaml
 
+# Declarada aqui, e não nas configurações do editor, para que `dart format` na
+# linha de comando e a formatação ao salvar cheguem ao mesmo resultado. Sem
+# isso, a CLI usa 80 e reformata tudo o que o editor escreveu com outra largura.
+formatter:
+  page_width: 100
+
 analyzer:
   exclude:
     - build/**
@@ -9,3 +15,11 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    # `avoid_print` e `use_build_context_synchronously` já vêm no flutter_lints,
+    # então não são repetidas aqui.
+    prefer_single_quotes: true
+    always_use_package_imports: true

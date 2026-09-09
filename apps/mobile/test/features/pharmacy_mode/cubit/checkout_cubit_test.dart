@@ -17,15 +17,9 @@ void main() {
       final cubit = CheckoutCubit(
         initialSession: initialSession,
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       );
 
       addTearDown(cubit.close);
@@ -44,15 +38,9 @@ void main() {
           status: CheckoutStatus.collectingMedication,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.scanMedication(
         const Medication(
@@ -63,21 +51,9 @@ void main() {
       ),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.collectingMedication,
-            )
-            .having(
-              (session) => session.medications.length,
-              'medications length',
-              1,
-            )
-            .having(
-              (session) => session.medications.single.ean,
-              'medication EAN',
-              '7891000000011',
-            ),
+            .having((session) => session.status, 'status', CheckoutStatus.collectingMedication)
+            .having((session) => session.medications.length, 'medications length', 1)
+            .having((session) => session.medications.single.ean, 'medication EAN', '7891000000011'),
       ],
     );
 
@@ -92,19 +68,12 @@ void main() {
           status: CheckoutStatus.collectingMedication,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
 
-      act: (cubit) =>
-          cubit.submitPrescription(const Prescription(reference: 'RX-001')),
+      act: (cubit) => cubit.submitPrescription(const Prescription(reference: 'RX-001')),
       expect: () => [
         isA<CheckoutSession>().having(
           (session) => session.status,
@@ -130,19 +99,12 @@ void main() {
           status: CheckoutStatus.collectingMedication,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: _FakePrescriptionRepository(
-          validationResult: false,
-        ),
-        medicationRepository: _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: _FakePrescriptionRepository(validationResult: false),
+        medicationRepository: _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
 
-      act: (cubit) =>
-          cubit.submitPrescription(const Prescription(reference: 'RX-001')),
+      act: (cubit) => cubit.submitPrescription(const Prescription(reference: 'RX-001')),
       expect: () => [
         isA<CheckoutSession>().having(
           (session) => session.status,
@@ -150,16 +112,8 @@ void main() {
           CheckoutStatus.validatingPrescription,
         ),
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.failed,
-            )
-            .having(
-              (session) => session.statusMessage,
-              'statusMessage',
-              'Receita inválida.',
-            ),
+            .having((session) => session.status, 'status', CheckoutStatus.failed)
+            .having((session) => session.statusMessage, 'statusMessage', 'Receita inválida.'),
       ],
     );
 
@@ -180,15 +134,9 @@ void main() {
           status: CheckoutStatus.checkingEligibility,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.checkEligibility(
         const Medication(
@@ -223,15 +171,9 @@ void main() {
           status: CheckoutStatus.checkingEligibility,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: false,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: false),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.checkEligibility(
         const Medication(
@@ -242,11 +184,7 @@ void main() {
       ),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.failed,
-            )
+            .having((session) => session.status, 'status', CheckoutStatus.failed)
             .having(
               (session) => session.statusMessage,
               'statusMessage',
@@ -272,24 +210,14 @@ void main() {
           status: CheckoutStatus.creatingPayment,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.createCheckout(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.awaitingConfirmation,
-            )
+            .having((session) => session.status, 'status', CheckoutStatus.awaitingConfirmation)
             .having(
               (session) => session.remoteCheckoutId,
               'remoteCheckoutId',
@@ -314,12 +242,8 @@ void main() {
           status: CheckoutStatus.creatingPayment,
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
         checkoutRepository: _FakeCheckoutRepository(
           createdCheckoutId: 'remote-checkout-001',
           createError: Exception('timeout'),
@@ -328,11 +252,7 @@ void main() {
       act: (cubit) => cubit.createCheckout(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.recoverableFailure,
-            )
+            .having((session) => session.status, 'status', CheckoutStatus.recoverableFailure)
             .having(
               (session) => session.retryTargetStatus,
               'retryTargetStatus',
@@ -358,12 +278,8 @@ void main() {
           remoteCheckoutId: 'remote-checkout-001',
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
         checkoutRepository: _FakeCheckoutRepository(
           createdCheckoutId: 'remote-checkout-001',
           checkoutById: CheckoutSession(
@@ -401,34 +317,16 @@ void main() {
           statusMessage: 'Falha ao criar o checkout.',
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.retry(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.creatingPayment,
-            )
-            .having(
-              (session) => session.retryTargetStatus,
-              'retryTargetStatus',
-              isNull,
-            )
-            .having(
-              (session) => session.statusMessage,
-              'statusMessage',
-              isNull,
-            ),
+            .having((session) => session.status, 'status', CheckoutStatus.creatingPayment)
+            .having((session) => session.retryTargetStatus, 'retryTargetStatus', isNull)
+            .having((session) => session.statusMessage, 'statusMessage', isNull),
       ],
     );
     blocTest<CheckoutCubit, CheckoutSession>(
@@ -444,34 +342,16 @@ void main() {
           statusMessage: 'Falha ao criar o checkout.',
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.retry(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.creatingPayment,
-            )
-            .having(
-              (session) => session.retryTargetStatus,
-              'retryTargetStatus',
-              isNull,
-            )
-            .having(
-              (session) => session.statusMessage,
-              'statusMessage',
-              isNull,
-            ),
+            .having((session) => session.status, 'status', CheckoutStatus.creatingPayment)
+            .having((session) => session.retryTargetStatus, 'retryTargetStatus', isNull)
+            .having((session) => session.statusMessage, 'statusMessage', isNull),
       ],
     );
     blocTest<CheckoutCubit, CheckoutSession>(
@@ -487,34 +367,16 @@ void main() {
           statusMessage: 'Falha ao criar o checkout.',
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
-        checkoutRepository: const _FakeCheckoutRepository(
-          createdCheckoutId: 'remote-checkout-001',
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
+        checkoutRepository: const _FakeCheckoutRepository(createdCheckoutId: 'remote-checkout-001'),
       ),
       act: (cubit) => cubit.retry(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.creatingPayment,
-            )
-            .having(
-              (session) => session.retryTargetStatus,
-              'retryTargetStatus',
-              isNull,
-            )
-            .having(
-              (session) => session.statusMessage,
-              'statusMessage',
-              isNull,
-            ),
+            .having((session) => session.status, 'status', CheckoutStatus.creatingPayment)
+            .having((session) => session.retryTargetStatus, 'retryTargetStatus', isNull)
+            .having((session) => session.statusMessage, 'statusMessage', isNull),
       ],
     );
     blocTest<CheckoutCubit, CheckoutSession>(
@@ -529,12 +391,8 @@ void main() {
           remoteCheckoutId: 'remote-checkout-001',
         ),
         stateMachine: const CheckoutStateMachine(),
-        prescriptionRepository: const _FakePrescriptionRepository(
-          validationResult: true,
-        ),
-        medicationRepository: const _FakeMedicationRepository(
-          eligibilityResult: true,
-        ),
+        prescriptionRepository: const _FakePrescriptionRepository(validationResult: true),
+        medicationRepository: const _FakeMedicationRepository(eligibilityResult: true),
         checkoutRepository: _FakeCheckoutRepository(
           createdCheckoutId: 'remote-checkout-001',
           getByIdError: Exception('timeout'),
@@ -543,11 +401,7 @@ void main() {
       act: (cubit) => cubit.confirmPayment(),
       expect: () => [
         isA<CheckoutSession>()
-            .having(
-              (session) => session.status,
-              'status',
-              CheckoutStatus.recoverableFailure,
-            )
+            .having((session) => session.status, 'status', CheckoutStatus.recoverableFailure)
             .having(
               (session) => session.retryTargetStatus,
               'retryTargetStatus',

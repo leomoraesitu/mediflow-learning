@@ -8,9 +8,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
-  testWidgets('exibe erros e não adiciona medicamento com formulário vazio', (
-    tester,
-  ) async {
+  testWidgets('exibe erros e não adiciona medicamento com formulário vazio', (tester) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
     final database = CheckoutDatabase(NativeDatabase.memory());
@@ -90,9 +88,7 @@ void main() {
     expect(find.text('Informe a referência da receita.'), findsNothing);
   });
 
-  testWidgets('preenche o EAN demonstrativo e confirma uma leitura válida', (
-    tester,
-  ) async {
+  testWidgets('preenche o EAN demonstrativo e confirma uma leitura válida', (tester) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
     final database = CheckoutDatabase(NativeDatabase.memory());

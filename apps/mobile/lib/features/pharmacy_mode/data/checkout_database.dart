@@ -58,17 +58,12 @@ final class CheckoutDatabase extends _$CheckoutDatabase {
 
   Future<void> writeCheckoutSession(String payload) async {
     await into(checkoutSessionRecords).insertOnConflictUpdate(
-      CheckoutSessionRecordsCompanion.insert(
-        id: const Value(1),
-        payload: payload,
-      ),
+      CheckoutSessionRecordsCompanion.insert(id: const Value(1), payload: payload),
     );
   }
 
   Future<void> clearCheckoutSession() async {
-    await (delete(
-      checkoutSessionRecords,
-    )..where((record) => record.id.equals(1))).go();
+    await (delete(checkoutSessionRecords)..where((record) => record.id.equals(1))).go();
   }
 
   Future<void> enqueueOutboxEvent({
@@ -86,10 +81,9 @@ final class CheckoutDatabase extends _$CheckoutDatabase {
   }
 
   Future<List<OutboxEvent>> readPendingOutboxEvents() {
-    return (select(outboxEvents)..orderBy([
-          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc),
-        ]))
-        .get();
+    return (select(
+      outboxEvents,
+    )..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)])).get();
   }
 
   Future<void> removeOutboxEvent(String idempotencyKey) async {

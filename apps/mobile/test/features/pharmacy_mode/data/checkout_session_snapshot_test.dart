@@ -11,11 +11,7 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.recoverableFailure,
       remoteCheckoutId: 'remote-01',
@@ -85,43 +81,25 @@ void main() {
       availableBalanceInCents: 18000,
       prescription: const Prescription(reference: 'RX-002'),
       medications: const [
-        Medication(
-          ean: '7891000000028',
-          name: 'Medicamento persistido',
-          unitPriceInCents: 3200,
-        ),
+        Medication(ean: '7891000000028', name: 'Medicamento persistido', unitPriceInCents: 3200),
       ],
       status: CheckoutStatus.awaitingConfirmation,
       remoteCheckoutId: 'remote-02',
       idempotencyKey: null,
     );
 
-    final encoded = jsonEncode(
-      CheckoutSessionSnapshot.fromDomain(originalSession).toMap(),
-    );
+    final encoded = jsonEncode(CheckoutSessionSnapshot.fromDomain(originalSession).toMap());
 
     final decoded = jsonDecode(encoded) as Map<String, Object?>;
 
     final restoredSession = CheckoutSessionSnapshot.fromMap(decoded).toDomain();
 
     expect(restoredSession.id, originalSession.id);
-    expect(
-      restoredSession.availableBalanceInCents,
-      originalSession.availableBalanceInCents,
-    );
-    expect(
-      restoredSession.prescription?.reference,
-      originalSession.prescription?.reference,
-    );
+    expect(restoredSession.availableBalanceInCents, originalSession.availableBalanceInCents);
+    expect(restoredSession.prescription?.reference, originalSession.prescription?.reference);
     expect(restoredSession.medications, hasLength(1));
-    expect(
-      restoredSession.medications.single.ean,
-      originalSession.medications.single.ean,
-    );
-    expect(
-      restoredSession.medications.single.name,
-      originalSession.medications.single.name,
-    );
+    expect(restoredSession.medications.single.ean, originalSession.medications.single.ean);
+    expect(restoredSession.medications.single.name, originalSession.medications.single.name);
     expect(
       restoredSession.medications.single.unitPriceInCents,
       originalSession.medications.single.unitPriceInCents,

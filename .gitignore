@@ -5,7 +5,11 @@ coverage/
 
 # Editors and operating system
 .idea/
-.vscode/
+# Precisa ser .vscode/* e não .vscode/: com a barra final o Git não entra no
+# diretório, e a exceção abaixo nunca seria avaliada.
+.vscode/*
+# settings.json é contrato de formatação do projeto, não preferência pessoal.
+!.vscode/settings.json
 *.iml
 .DS_Store
 

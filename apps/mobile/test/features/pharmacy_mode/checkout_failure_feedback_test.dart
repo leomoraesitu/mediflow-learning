@@ -7,9 +7,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_reposi
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
-  testWidgets('shows an accessible message and retries a recoverable failure', (
-    tester,
-  ) async {
+  testWidgets('shows an accessible message and retries a recoverable failure', (tester) async {
     final cubit = CheckoutCubit(
       initialSession: CheckoutSession(
         id: 'session-001',
@@ -30,10 +28,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<CheckoutCubit>.value(
-          value: cubit,
-          child: const PharmacyModePage(),
-        ),
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
       ),
     );
 
@@ -72,10 +67,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<CheckoutCubit>.value(
-          value: cubit,
-          child: const PharmacyModePage(),
-        ),
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
       ),
     );
 

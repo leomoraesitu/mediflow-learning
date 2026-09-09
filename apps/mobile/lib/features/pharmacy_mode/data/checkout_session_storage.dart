@@ -1,4 +1,4 @@
-import 'checkout_session_snapshot.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
 
 abstract interface class CheckoutSessionStorage {
   Future<void> save(CheckoutSessionSnapshot snapshot);

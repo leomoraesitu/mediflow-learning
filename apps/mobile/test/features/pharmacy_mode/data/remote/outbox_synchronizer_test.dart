@@ -30,15 +30,9 @@ void main() {
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
 
-    final synchronizer = OutboxSynchronizer(
-      database: database,
-      checkoutRepository: outboxRepo,
-    );
+    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
 
     await synchronizer.drain();
 
@@ -68,15 +62,9 @@ void main() {
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
 
-    final synchronizer = OutboxSynchronizer(
-      database: database,
-      checkoutRepository: outboxRepo,
-    );
+    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
 
     await synchronizer.drain();
 
@@ -108,15 +96,9 @@ void main() {
       failingIdempotencyKeys: {'key-01'},
     );
 
-    final outboxRepo = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
 
-    final synchronizer = OutboxSynchronizer(
-      database: database,
-      checkoutRepository: outboxRepo,
-    );
+    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
 
     await synchronizer.drain();
 
@@ -141,9 +123,7 @@ void main() {
     await database.enqueueOutboxEvent(
       idempotencyKey: 'key-fail',
       operationType: 'createCheckout',
-      payload: jsonEncode(
-        CheckoutSessionSnapshot.fromDomain(failingSession).toMap(),
-      ),
+      payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(failingSession).toMap()),
     );
     final succeedingSession = CheckoutSession(
       id: 'session-id',
@@ -157,9 +137,7 @@ void main() {
     await database.enqueueOutboxEvent(
       idempotencyKey: 'key-ok',
       operationType: 'createCheckout',
-      payload: jsonEncode(
-        CheckoutSessionSnapshot.fromDomain(succeedingSession).toMap(),
-      ),
+      payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(succeedingSession).toMap()),
     );
 
     final repository = _FakeCheckoutRepository(
@@ -167,15 +145,9 @@ void main() {
       failingIdempotencyKeys: {'key-fail'},
     );
 
-    final outboxRepo = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
 
-    final synchronizer = OutboxSynchronizer(
-      database: database,
-      checkoutRepository: outboxRepo,
-    );
+    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
 
     await synchronizer.drain();
 

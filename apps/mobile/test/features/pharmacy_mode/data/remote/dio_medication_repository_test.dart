@@ -16,69 +16,52 @@ void main() {
 
   setUp(() {
     fakeAdapter = FakeHttpClientAdapter();
-    dio = Dio(BaseOptions(baseUrl: 'https://example.com'))
-      ..httpClientAdapter = fakeAdapter;
+    dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
     apiClient = CheckoutApiClient.withDio(dio);
     repository = DioMedicationRepository(apiClient: apiClient);
-    medication = Medication(
-      ean: '1234567890123',
-      name: 'Some Medication',
-      unitPriceInCents: 10,
-    );
+    medication = Medication(ean: '1234567890123', name: 'Some Medication', unitPriceInCents: 10);
   });
 
-  test(
-    'returns true when the API confirms the medication is eligible',
-    () async {
-      fakeAdapter
-              .mockedResponses['/medications/${medication.ean}/eligibility'] =
-          ResponseBody.fromString(
-            '{"isEligible": true}',
-            200,
-            headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
-            },
-          );
+  test('returns true when the API confirms the medication is eligible', () async {
+    fakeAdapter.mockedResponses['/medications/${medication.ean}/eligibility'] =
+        ResponseBody.fromString(
+          '{"isEligible": true}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
 
-      expect(await repository.checkEligibility(medication), isTrue);
-    },
-  );
-  test(
-    'returns false when the API confirms the medication is not eligible',
-    () async {
-      fakeAdapter
-              .mockedResponses['/medications/${medication.ean}/eligibility'] =
-          ResponseBody.fromString(
-            '{"isEligible": false}',
-            200,
-            headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
-            },
-          );
+    expect(await repository.checkEligibility(medication), isTrue);
+  });
+  test('returns false when the API confirms the medication is not eligible', () async {
+    fakeAdapter.mockedResponses['/medications/${medication.ean}/eligibility'] =
+        ResponseBody.fromString(
+          '{"isEligible": false}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
 
-      expect(await repository.checkEligibility(medication), isFalse);
-    },
-  );
-  test(
-    'throws an exception when the API responds with a server error',
-    () async {
-      fakeAdapter
-              .mockedResponses['/medications/${medication.ean}/eligibility'] =
-          ResponseBody.fromString(
-            'Internal Server Error',
-            500,
-            headers: {
-              Headers.contentTypeHeader: [Headers.textPlainContentType],
-            },
-          );
+    expect(await repository.checkEligibility(medication), isFalse);
+  });
+  test('throws an exception when the API responds with a server error', () async {
+    fakeAdapter.mockedResponses['/medications/${medication.ean}/eligibility'] =
+        ResponseBody.fromString(
+          'Internal Server Error',
+          500,
+          headers: {
+            Headers.contentTypeHeader: [Headers.textPlainContentType],
+          },
+        );
 
-      expect(
-        () async => await repository.checkEligibility(medication),
-        throwsA(isA<ServerUnavailableFailure>()),
-      );
-    },
-  );
+    expect(
+      () async => await repository.checkEligibility(medication),
+      throwsA(isA<ServerUnavailableFailure>()),
+    );
+  });
   test('throws an exception when the response body is missing the eligibility field', () {
     fakeAdapter.mockedResponses['/medications/${medication.ean}/eligibility'] =
         ResponseBody.fromString(
@@ -89,9 +72,6 @@ void main() {
           },
         );
 
-    expect(
-      () async => await repository.checkEligibility(medication),
-      throwsA(isA<Exception>()),
-    );
+    expect(() async => await repository.checkEligibility(medication), throwsA(isA<Exception>()));
   });
 }

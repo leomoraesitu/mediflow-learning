@@ -8,9 +8,7 @@ final class DioMedicationRepository implements MedicationRepository {
 
   @override
   Future<bool> checkEligibility(Medication medication) async {
-    final response = await _apiClient.get(
-      '/medications/${medication.ean}/eligibility',
-    );
+    final response = await _apiClient.get('/medications/${medication.ean}/eligibility');
 
     final isEligible = response['isEligible'] as bool?;
     if (isEligible == null) {

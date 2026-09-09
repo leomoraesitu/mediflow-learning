@@ -1,0 +1,14 @@
+{
+  // Contrato de formatação do projeto, versionado para valer em qualquer
+  // máquina. Preferências pessoais continuam nas configurações do usuário.
+
+  // O formatador embutido de TypeScript insere espaços dentro das chaves,
+  // enquanto o eslint-config-google usado em functions/ exige o contrário.
+  // Sem estas duas linhas, cada salvamento reintroduz erros de object-curly-spacing.
+  "typescript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": false,
+  "javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": false,
+
+  // A largura de linha do Dart é declarada em apps/mobile/analysis_options.yaml
+  // (formatter.page_width), respeitada tanto pela CLI quanto pela extensão.
+  "editor.formatOnSave": true
+}

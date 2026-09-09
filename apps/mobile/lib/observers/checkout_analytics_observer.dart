@@ -20,10 +20,7 @@ final class CheckoutAnalyticsObserver extends BlocObserver {
 
     if (previousStatus == newStatus) return;
 
-    _analytics.logEvent(
-      name: 'checkout_step',
-      parameters: {'step': newStatus.name},
-    );
+    _analytics.logEvent(name: 'checkout_step', parameters: {'step': newStatus.name});
   }
 
   @override

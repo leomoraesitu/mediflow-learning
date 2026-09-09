@@ -33,10 +33,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<CheckoutCubit>.value(
-          value: cubit,
-          child: const PharmacyModePage(),
-        ),
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
       ),
     );
 
