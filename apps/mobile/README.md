@@ -144,6 +144,14 @@ A trava contra laço infinito fica em `RequestOptions.extra`, que viaja junto co
 
 A política de renovação vive no `main()`, e a validação contra os emuladores derrubou duas premissas antes de ela funcionar. A primeira era que `getIdToken(true)` falharia para um usuário excluído, revelando identidade inválida; ele devolveu um token normalmente. A segunda, mais sutil, é que `signInAnonymously()` **devolve o usuário anônimo já autenticado em vez de criar outro** — comportamento documentado que fazia a renovação retornar exatamente a credencial recusada. O `signOut()` antes do login é o que torna a recuperação real, e está comentado no código como obrigatório justamente por parecer supérfluo. O relato completo está no ADR 0001.
 
+Na Aula 37, a política de identidade saiu de dentro do `main()` e ganhou endereço próprio em `lib/config/firebase_auth_token_provider.dart`. O `FirebaseAuth` chega por construtor, e não por `FirebaseAuth.instance` interno — é isso que permite ao teste apontar a classe para o emulador em vez de depender do estado global configurado na inicialização. A classe expõe um método nomeado `token`, passado por tear-off (`FirebaseAuthTokenProvider(FirebaseAuth.instance).token`), em vez de um `call` que a tornaria invocável: no teste, `provider.token(forceRefresh: true)` se lê sozinho, enquanto `provider(...)` obrigaria quem lê a saber que existe um `call` escondido.
+
+O motivo da extração é um teste que os 87 anteriores não conseguiam escrever. Toda a suíte ficou verde durante a Aula 36 enquanto a correção **não funcionava**, porque nenhum teste tocava o Firebase de verdade — todos usavam um provedor falso que, por construção, devolvia uma credencial nova quando solicitado. `integration_test/identity_recovery_test.dart` autentica anonimamente contra o emulador de Authentication, guarda o `uid`, apaga as contas pela API do emulador, pede renovação e exige que o `uid` resultante seja **diferente**.
+
+A invalidação precisa vir de fora do SDK, e a escolha do endpoint importa mais do que parece. `accounts:delete` responde `HTTP 200` **sem apagar nada** — um teste construído sobre ele passaria em todas as etapas sem ter invalidado identidade alguma, e passaria também contra a versão errada do código. `accounts:batchDelete` recusa contas ativas. O que funciona é `DELETE /emulator/v1/projects/{projectId}/accounts`, específico do emulador, o que também elimina o risco de alguém apontá-lo para produção. O endereço usado é `10.0.2.2`, porque o teste roda no dispositivo e o emulador está na máquina hospedeira.
+
+O valor do teste foi verificado por experimento, não por raciocínio: removendo o `signOut()` do provedor, ele falha com `Expected: not '<uid>' / Actual: '<uid>'`; restaurando, volta a passar. Ele distingue a versão certa da errada, que é a única propriedade que torna um teste útil.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -187,7 +195,21 @@ git status --short
 
 O resultado esperado é formatação limpa, análise estática sem problemas, 87 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` e a renovação automática de credencial após um `401` — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
-Vale registrar um limite dessa suíte: **nada aqui cobre a composição do `main()`**. Os testes de widget constroem `MainApp` diretamente, com repositórios de demonstração, então a ligação real entre `Dio*Repository`, outbox e decorators de performance não é exercitada por nenhum teste automatizado. Foi exatamente ali que a Aula 34 introduziu e corrigiu seu erro mais grave, com o outbox acidentalmente removido do caminho do app enquanto análise e testes seguiam verdes. A validação dessa camada continua sendo manual, contra os emuladores, e a forma de automatizá-la seria o pacote `integration_test`, ainda não adotado no projeto.
+### Teste de integração
+
+Existe um segundo tipo de teste no projeto, com pré-requisito de ambiente e por isso fora do `flutter test` comum. Ele exige o emulador de Authentication no ar e um dispositivo conectado:
+
+```bash
+firebase emulators:start --only auth
+cd apps/mobile
+flutter test integration_test/identity_recovery_test.dart -d <device-id>
+```
+
+`identity_recovery_test.dart` verifica que a política de renovação de identidade produz de fato uma credencial nova depois que a conta deixa de existir. É cobertura estreita e profunda, deliberadamente: ela não percorre o fluxo de checkout nem valida a composição inteira, mas é o único teste do projeto que exercita o `FirebaseAuth` real, e teria pego as duas premissas erradas da Aula 36 que passaram por toda a suíte de unidade.
+
+### Limite conhecido
+
+**Nada cobre a composição do `main()`.** Os testes de widget constroem `MainApp` diretamente, com repositórios de demonstração, então a ligação real entre `Dio*Repository`, outbox e decorators de performance não é exercitada. Foi exatamente ali que a Aula 34 introduziu e corrigiu seu erro mais grave, com o outbox acidentalmente removido do caminho do app enquanto análise e testes seguiam verdes. O teste de integração da Aula 37 reduziu essa lacuna em um ponto específico, a política de identidade, mas a composição como um todo continua sendo validada manualmente contra os emuladores.
 
 ## Referências oficiais
 
@@ -243,3 +265,5 @@ Vale registrar um limite dessa suíte: **nada aqui cobre a composição do `main
 - [Configuração de segurança de rede no Android](https://developer.android.com/privacy-and-security/security-config)
 - [`String.fromEnvironment`](https://api.dart.dev/dart-core/String/String.fromEnvironment.html)
 - [`Error` e `Exception` em Dart](https://dart.dev/language/error-handling)
+- [Testes de integração no Flutter](https://docs.flutter.dev/testing/integration-tests)
+- [Emulador de Authentication](https://firebase.google.com/docs/emulator-suite/connect_auth)
