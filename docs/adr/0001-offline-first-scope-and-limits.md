@@ -34,7 +34,9 @@ Essas duas condições não são garantias arquiteturais permanentes — são o 
 
 `main()` chama `await synchronizer.drain()` antes de `runApp()` — a primeira tela do app espera a tentativa de reenvio do outbox resolver (ou falhar) antes de aparecer. Isso contradiz o espírito offline-first (mostrar a UI imediatamente a partir do estado local, sincronizar em segundo plano sem bloquear). Foi assim que o `OutboxSynchronizer` foi conectado nesta sessão de estudo, e a inconsistência foi identificada nesta discussão, não corrigida — decisão explícita de manter o escopo da Aula 28 em discussão, não em implementação.
 
-### Limite descoberto na Aula 35: identidade inválida trava o outbox para sempre
+### Limite descoberto na Aula 35 e resolvido na Aula 36: identidade inválida travava o outbox
+
+> **Resolvido.** A Aula 36 fez o `CheckoutApiClient` renovar a identidade e repetir a requisição uma vez ao receber `401`. O relato abaixo permanece porque descreve o mecanismo da falha e as duas premissas erradas que a correção precisou derrubar.
 
 Com a autenticação das rotas do backend, o outbox ganhou uma forma nova de falhar permanentemente. `main()` só autentica quando não há usuário:
 
@@ -50,11 +52,22 @@ Nesse estado, todas as chamadas ao backend recebem `401`, que o `NetworkFailure`
 
 O comportamento foi observado durante a validação da Aula 35, quando o emulador de Authentication foi reiniciado (ele guarda usuários em memória) enquanto o aplicativo mantinha a credencial em cache. Removendo apenas a credencial persistida e preservando o outbox, o aplicativo criou um usuário novo na inicialização seguinte, o reenvio passou e a fila esvaziou — confirmando o diagnóstico.
 
-A correção não foi feita nesta aula. O caminho seria tratar `401` como sinal de que a identidade precisa ser renovada, e não como recusa definitiva: reautenticar e tentar de novo, em vez de contabilizar como falha permanente.
+#### Como foi corrigido, e as duas premissas que caíram no caminho
+
+O `onError` do interceptor do Dio passou a tratar `401` como sinal de que a identidade precisa ser renovada: ele pede uma credencial nova ao provedor, refaz a requisição uma única vez e entrega o resultado ao chamador. A marcação fica em `RequestOptions.extra`, que viaja com a requisição e impede laço infinito; qualquer outro erro, inclusive `500`, passa direto sem renovação. O `onRequest` reconhece a retentativa e não reescreve o header, senão desfaria a renovação que o `onError` acabou de aplicar.
+
+A validação contra os emuladores derrubou duas premissas do desenho original, e nenhuma delas seria pega por teste automatizado, porque ambas dependem do comportamento real do SDK:
+
+1. **`getIdToken(true)` não sinaliza identidade inválida.** Supunha-se que a renovação falharia para um usuário excluído, revelando o cenário. Ela não falhou: devolveu um token para um usuário que já não existia. Por isso a política deixou de tentar distinguir "token expirado" de "identidade morta" e passou a simplesmente obter uma identidade nova — decisão viável porque a autenticação é anônima e a conta não guarda nada.
+
+2. **`signInAnonymously()` devolve o usuário anônimo já autenticado em vez de criar outro.** É comportamento documentado, e significa que, com a credencial inválida ainda em cache, a "renovação" retornava exatamente a credencial recusada. O `signOut()` antes do login é o que torna a recuperação real, e está comentado no código como obrigatório justamente porque parece supérfluo.
+
+O cenário foi reproduzido de ponta a ponta: evento enfileirado durante uma queda do backend, identidade invalidada, aplicativo reiniciado. Antes da correção, o evento era rejeitado a cada inicialização; depois, ele chegou ao Firestore sozinho, com o outbox esvaziando sem nenhuma intervenção.
 
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura, misto na escrita (query vs. command), e bloqueante na inicialização por causa do `drain()`.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
 - O bloqueio de `main()` no `drain()` é uma dívida técnica reconhecida e registrada aqui deliberadamente, para não ser esquecida nem redescoberta do zero numa aula futura. Corrigi-la (ex.: chamar `drain()` sem `await` antes de `runApp`, deixando-a rodar em segundo plano) fica fora do escopo desta aula.
-- A garantia do outbox — "nenhuma intenção de compra se perde" — vale contra falhas de rede, mas **não** contra invalidação de identidade. Enquanto `401` for tratado como falha permanente e o aplicativo não se reautenticar, existe um caminho em que o evento fica preso para sempre. Esta é a dívida mais séria registrada neste ADR, porque as demais degradam a experiência enquanto esta perde silenciosamente um checkout.
+- A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer também contra invalidação de identidade, e não só contra falhas de rede. O que a sustenta é a renovação automática no `401`, com retentativa única. Ela continua **não** valendo se a renovação em si falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar: nesse caso o evento permanece na fila, o que é o comportamento desejado, mas sem nenhum sinal ao usuário de que algo está pendente.
+- Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real de renovação funciona. As duas premissas erradas descritas acima passaram por toda a suíte e só apareceram na validação manual contra os emuladores.
