@@ -7,8 +7,7 @@ final class MedicationCounterState {
 }
 
 final class MedicationCounterCubit extends Cubit<MedicationCounterState> {
-  MedicationCounterCubit()
-    : super(const MedicationCounterState(scannedMedicationCount: 0));
+  MedicationCounterCubit() : super(const MedicationCounterState(scannedMedicationCount: 0));
 
   void registerMedicationScan() {
     final nextCount = state.scannedMedicationCount + 1;

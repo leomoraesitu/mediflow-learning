@@ -43,9 +43,7 @@ final class DioCheckoutRepository implements CheckoutRepository {
   }
 }
 
-Future<CheckoutSession> _parseCheckoutSession(
-  Map<String, dynamic> response,
-) async {
+Future<CheckoutSession> _parseCheckoutSession(Map<String, dynamic> response) async {
   final id = response['id'] as String?;
   final availableBalanceInCents = response['availableBalanceInCents'] as int?;
   final prescriptionMap = response['prescription'] as Map<String, dynamic>?;

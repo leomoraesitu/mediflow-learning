@@ -1,8 +1,7 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 
-final class PerformanceTracingPrescriptionRepository
-    implements PrescriptionRepository {
+final class PerformanceTracingPrescriptionRepository implements PrescriptionRepository {
   final PrescriptionRepository _inner;
   final FirebasePerformance _performance;
 

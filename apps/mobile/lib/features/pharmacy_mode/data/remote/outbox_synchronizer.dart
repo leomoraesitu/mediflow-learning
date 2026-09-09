@@ -8,10 +8,7 @@ final class OutboxSynchronizer {
   final CheckoutDatabase _database;
   final CheckoutRepository _checkoutRepository;
 
-  const OutboxSynchronizer({
-    required this._database,
-    required this._checkoutRepository,
-  });
+  const OutboxSynchronizer({required this._database, required this._checkoutRepository});
 
   Future<void> drain() async {
     final pendingEvents = await _database.readPendingOutboxEvents();

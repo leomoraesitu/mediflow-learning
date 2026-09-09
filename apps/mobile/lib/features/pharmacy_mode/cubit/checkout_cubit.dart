@@ -6,8 +6,8 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../data/checkout_session_storage.dart';
-import '../data/checkout_session_snapshot.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_storage.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
 
 final class CheckoutCubit extends Cubit<CheckoutSession> {
   final CheckoutStateMachine _stateMachine;
@@ -85,20 +85,14 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
       await _emitPersisted(
         _stateMachine.transition(
           session: state,
-          event: const CheckoutFailed(
-            errorMessage: 'Receita inválida.',
-            recoverable: false,
-          ),
+          event: const CheckoutFailed(errorMessage: 'Receita inválida.', recoverable: false),
         ),
       );
       return;
     }
 
     await _emitPersisted(
-      _stateMachine.transition(
-        session: state,
-        event: const PrescriptionValidated(),
-      ),
+      _stateMachine.transition(session: state, event: const PrescriptionValidated()),
     );
   }
 
@@ -121,10 +115,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     }
 
     await _emitPersisted(
-      _stateMachine.transition(
-        session: state,
-        event: const EligibilityConfirmed(),
-      ),
+      _stateMachine.transition(session: state, event: const EligibilityConfirmed()),
     );
   }
 
@@ -184,14 +175,10 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
     if (isClosed || remoteCheckout.status != CheckoutStatus.paid) return;
 
-    await _emitPersisted(
-      _stateMachine.transition(session: state, event: const PaymentConfirmed()),
-    );
+    await _emitPersisted(_stateMachine.transition(session: state, event: const PaymentConfirmed()));
   }
 
   Future<void> retry() async {
-    await _emitPersisted(
-      _stateMachine.transition(session: state, event: const RetryRequested()),
-    );
+    await _emitPersisted(_stateMachine.transition(session: state, event: const RetryRequested()));
   }
 }

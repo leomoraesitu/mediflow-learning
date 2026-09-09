@@ -8,48 +8,47 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
-  testWidgets(
-    'maintenanceMode true deve exibir mensagem e impedir acesso ao Modo Farmácia',
-    (tester) async {
-      final pharmacyModePage = find.byType(PharmacyModePage);
-      final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
-      final database = CheckoutDatabase(NativeDatabase.memory());
+  testWidgets('maintenanceMode true deve exibir mensagem e impedir acesso ao Modo Farmácia', (
+    tester,
+  ) async {
+    final pharmacyModePage = find.byType(PharmacyModePage);
+    final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
+    final database = CheckoutDatabase(NativeDatabase.memory());
 
-      final checkoutRepository = OutboxCheckoutRepository(
-        inner: DemoCheckoutRepository(),
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
+    await tester.pumpWidget(
+      MainApp(
         database: database,
-      );
-      await tester.pumpWidget(
-        MainApp(
-          database: database,
-          checkoutRepository: checkoutRepository,
-          prescriptionRepository: const DemoPrescriptionRepository(),
-          medicationRepository: const DemoMedicationRepository(),
-          settings: const StaticOperationalSettings(
-            maintenanceMode: true,
-            maintenanceMessage: 'Manutenção programada até 12h.',
-          ),
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+        settings: const StaticOperationalSettings(
+          maintenanceMode: true,
+          maintenanceMessage: 'Manutenção programada até 12h.',
         ),
-      );
+      ),
+    );
 
-      expect(find.text('MediFlow'), findsOneWidget);
-      expect(pharmacyModePage, findsNothing);
-      expect(openPharmacyModeButton, findsOneWidget);
+    expect(find.text('MediFlow'), findsOneWidget);
+    expect(pharmacyModePage, findsNothing);
+    expect(openPharmacyModeButton, findsOneWidget);
 
-      expect(find.text('Manutenção programada até 12h.'), findsOneWidget);
+    expect(find.text('Manutenção programada até 12h.'), findsOneWidget);
 
-      await tester.tap(openPharmacyModeButton);
-      await tester.pumpAndSettle();
+    await tester.tap(openPharmacyModeButton);
+    await tester.pumpAndSettle();
 
-      final button = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Iniciar Modo Farmácia'),
-      );
-      expect(button.enabled, isFalse);
+    final button = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Iniciar Modo Farmácia'),
+    );
+    expect(button.enabled, isFalse);
 
-      expect(pharmacyModePage, findsNothing);
-      expect(find.byType(CheckoutProgressIndicator), findsNothing);
-    },
-  );
+    expect(pharmacyModePage, findsNothing);
+    expect(find.byType(CheckoutProgressIndicator), findsNothing);
+  });
   testWidgets(
     'StaticOperationalSettings padrão deve ocultar a mensagem e habilitar o botão do Modo Farmácia',
     (tester) async {

@@ -11,9 +11,7 @@ import 'package:mediflow_mobile/main.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 
 void main() {
-  testWidgets('valid scan updates the checkout session used by the screen', (
-    tester,
-  ) async {
+  testWidgets('valid scan updates the checkout session used by the screen', (tester) async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     final checkoutRepository = OutboxCheckoutRepository(
       inner: DemoCheckoutRepository(),
@@ -46,9 +44,7 @@ void main() {
     await tester.tap(readingSimulation);
     await tester.pump();
 
-    final contentContext = tester.element(
-      find.byType(MedicationCounterContent),
-    );
+    final contentContext = tester.element(find.byType(MedicationCounterContent));
     final checkoutCubit = contentContext.read<CheckoutCubit>();
 
     expect(checkoutCubit.state.medications, hasLength(1));
@@ -56,44 +52,39 @@ void main() {
     expect(find.text('1 medicamento lido'), findsOneWidget);
   });
 
-  testWidgets(
-    'shows confirmation when the checkout session receives a medication',
-    (tester) async {
-      final database = CheckoutDatabase(NativeDatabase.memory());
-      final checkoutRepository = OutboxCheckoutRepository(
-        inner: DemoCheckoutRepository(),
+  testWidgets('shows confirmation when the checkout session receives a medication', (tester) async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    final checkoutRepository = OutboxCheckoutRepository(
+      inner: DemoCheckoutRepository(),
+      database: database,
+    );
+    final settings = StaticOperationalSettings();
+
+    await tester.pumpWidget(
+      MainApp(
         database: database,
-      );
-      final settings = StaticOperationalSettings();
+        checkoutRepository: checkoutRepository,
+        prescriptionRepository: const DemoPrescriptionRepository(),
+        medicationRepository: const DemoMedicationRepository(),
+        settings: settings,
+      ),
+    );
 
-      await tester.pumpWidget(
-        MainApp(
-          database: database,
-          checkoutRepository: checkoutRepository,
-          prescriptionRepository: const DemoPrescriptionRepository(),
-          medicationRepository: const DemoMedicationRepository(),
-          settings: settings,
-        ),
-      );
+    await tester.tap(find.text('Iniciar Modo Farmácia'));
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Iniciar Modo Farmácia'));
-      await tester.pumpAndSettle();
+    final contentContext = tester.element(find.byType(MedicationCounterContent));
+    final checkoutCubit = contentContext.read<CheckoutCubit>();
 
-      final contentContext = tester.element(
-        find.byType(MedicationCounterContent),
-      );
-      final checkoutCubit = contentContext.read<CheckoutCubit>();
+    checkoutCubit.scanMedication(
+      const Medication(
+        ean: '7891000000011',
+        name: 'Medicamento demonstrativo',
+        unitPriceInCents: 2500,
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      checkoutCubit.scanMedication(
-        const Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Medicamento adicionado à compra.'), findsOneWidget);
-    },
-  );
+    expect(find.text('Medicamento adicionado à compra.'), findsOneWidget);
+  });
 }

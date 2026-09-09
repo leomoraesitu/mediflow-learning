@@ -11,10 +11,7 @@ void main() {
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outbox = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outbox = OutboxCheckoutRepository(inner: repository, database: database);
 
     final session = CheckoutSession(
       id: 'session-id',
@@ -40,10 +37,7 @@ void main() {
       createError: Exception('Falha de rede'),
     );
 
-    final outbox = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outbox = OutboxCheckoutRepository(inner: repository, database: database);
 
     final session = CheckoutSession(
       id: 'session-id',
@@ -68,10 +62,7 @@ void main() {
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outbox = OutboxCheckoutRepository(
-      inner: repository,
-      database: database,
-    );
+    final outbox = OutboxCheckoutRepository(inner: repository, database: database);
 
     final session = CheckoutSession(
       id: 'session-id',

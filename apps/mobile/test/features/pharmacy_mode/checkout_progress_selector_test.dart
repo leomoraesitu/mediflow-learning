@@ -8,9 +8,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_pro
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
-  testWidgets('shows eligibility validation as checkout step 2', (
-    tester,
-  ) async {
+  testWidgets('shows eligibility validation as checkout step 2', (tester) async {
     // Arrange: CheckoutCubit iniciado em checkingEligibility.ß
     const prescription = Prescription(reference: 'Teste Prescription');
 
@@ -40,10 +38,7 @@ void main() {
     // Act
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<CheckoutCubit>.value(
-          value: cubit,
-          child: const PharmacyModePage(),
-        ),
+        home: BlocProvider<CheckoutCubit>.value(value: cubit, child: const PharmacyModePage()),
       ),
     );
 
@@ -57,19 +52,12 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.creatingPayment,
     );
 
-    expect(selectCheckoutProgress(session), (
-      currentStep: 3,
-      label: 'Criação do pagamento',
-    ));
+    expect(selectCheckoutProgress(session), (currentStep: 3, label: 'Criação do pagamento'));
   });
 
   test('maps payment confirmation to step 4', () {
@@ -78,20 +66,13 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.awaitingConfirmation,
       remoteCheckoutId: 'remote-checkout-001',
     );
 
-    expect(selectCheckoutProgress(session), (
-      currentStep: 4,
-      label: 'Confirmação do pagamento',
-    ));
+    expect(selectCheckoutProgress(session), (currentStep: 4, label: 'Confirmação do pagamento'));
   });
   test('maps checkout recoverable failure to step 3', () {
     final session = CheckoutSession(
@@ -99,20 +80,13 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.recoverableFailure,
       retryTargetStatus: CheckoutStatus.creatingPayment,
     );
 
-    expect(selectCheckoutProgress(session), (
-      currentStep: 3,
-      label: 'Criação do pagamento',
-    ));
+    expect(selectCheckoutProgress(session), (currentStep: 3, label: 'Criação do pagamento'));
   });
   test('maps payment confirmation paid to step 4', () {
     final session = CheckoutSession(
@@ -120,19 +94,12 @@ void main() {
       availableBalanceInCents: 25000,
       prescription: const Prescription(reference: 'RX-001'),
       medications: const [
-        Medication(
-          ean: '7891000000011',
-          name: 'Medicamento demonstrativo',
-          unitPriceInCents: 2500,
-        ),
+        Medication(ean: '7891000000011', name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
       ],
       status: CheckoutStatus.paid,
       remoteCheckoutId: 'remote-checkout-001',
     );
 
-    expect(selectCheckoutProgress(session), (
-      currentStep: 4,
-      label: 'Confirmação do pagamento',
-    ));
+    expect(selectCheckoutProgress(session), (currentStep: 4, label: 'Confirmação do pagamento'));
   });
 }

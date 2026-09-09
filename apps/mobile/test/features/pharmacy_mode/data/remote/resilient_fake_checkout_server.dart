@@ -28,6 +28,5 @@ final class ResilientFakeCheckoutServer implements CheckoutRepository {
   }
 
   @override
-  Future<CheckoutSession> getById(String remoteCheckoutId) =>
-      throw UnimplementedError();
+  Future<CheckoutSession> getById(String remoteCheckoutId) => throw UnimplementedError();
 }

@@ -40,8 +40,7 @@ final class CheckoutSessionSnapshot {
   factory CheckoutSessionSnapshot.fromMap(Map<String, Object?> map) {
     final prescriptionMap = map['prescription'] as Map<String, Object?>?;
 
-    final medicationMaps = (map['medications'] as List<Object?>)
-        .cast<Map<String, Object?>>();
+    final medicationMaps = (map['medications'] as List<Object?>).cast<Map<String, Object?>>();
 
     final retryTargetStatusName = map['retryTargetStatus'] as String?;
 

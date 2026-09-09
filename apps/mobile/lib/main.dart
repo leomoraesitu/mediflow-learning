@@ -29,7 +29,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_pro
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
-import 'firebase_options.dart';
+import 'package:mediflow_mobile/firebase_options.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
@@ -51,16 +51,12 @@ void main() async {
     }
   } on FirebaseAuthException catch (e) {
     // ignore: avoid_print
-    print(
-      'Falha ao autenticar anonimamente: ${e.message}. Seguindo sem usuário autenticado.',
-    );
+    print('Falha ao autenticar anonimamente: ${e.message}. Seguindo sem usuário autenticado.');
   }
 
   final database = CheckoutDatabase.defaults();
 
-  final settings = await RemoteConfigOperationalSettings.load(
-    FirebaseRemoteConfig.instance,
-  );
+  final settings = await RemoteConfigOperationalSettings.load(FirebaseRemoteConfig.instance);
 
   final apiClient = CheckoutApiClient(
     baseUrl: checkoutApiBaseUrl,
@@ -72,21 +68,18 @@ void main() async {
     database: database,
   );
 
-  final performanceTracingPrescriptionRepository =
-      PerformanceTracingPrescriptionRepository(
-        inner: DioPrescriptionRepository(apiClient: apiClient),
-        performance: FirebasePerformance.instance,
-      );
-  final performanceTracingMedicationRepository =
-      PerformanceTracingMedicationRepository(
-        inner: DioMedicationRepository(apiClient: apiClient),
-        performance: FirebasePerformance.instance,
-      );
-  final performanceTracingCheckoutRepository =
-      PerformanceTracingCheckoutRepository(
-        inner: outboxCheckoutRepository,
-        performance: FirebasePerformance.instance,
-      );
+  final performanceTracingPrescriptionRepository = PerformanceTracingPrescriptionRepository(
+    inner: DioPrescriptionRepository(apiClient: apiClient),
+    performance: FirebasePerformance.instance,
+  );
+  final performanceTracingMedicationRepository = PerformanceTracingMedicationRepository(
+    inner: DioMedicationRepository(apiClient: apiClient),
+    performance: FirebasePerformance.instance,
+  );
+  final performanceTracingCheckoutRepository = PerformanceTracingCheckoutRepository(
+    inner: outboxCheckoutRepository,
+    performance: FirebasePerformance.instance,
+  );
 
   final synchronizer = OutboxSynchronizer(
     database: database,
@@ -180,14 +173,9 @@ class BenefitsHomePage extends StatelessWidget {
             future: cubitFuture,
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
-              return BlocProvider.value(
-                value: snapshot.data!,
-                child: const PharmacyModePage(),
-              );
+              return BlocProvider.value(value: snapshot.data!, child: const PharmacyModePage());
             },
           );
         },
@@ -199,9 +187,7 @@ class BenefitsHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final formattedBalance = availableBalance
-        .toStringAsFixed(2)
-        .replaceFirst('.', ',');
+    final formattedBalance = availableBalance.toStringAsFixed(2).replaceFirst('.', ',');
 
     return Scaffold(
       appBar: AppBar(title: const Text('MediFlow')),
@@ -210,11 +196,7 @@ class BenefitsHomePage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.account_balance_wallet_outlined,
-                size: 48,
-                color: colorScheme.primary,
-              ),
+              Icon(Icons.account_balance_wallet_outlined, size: 48, color: colorScheme.primary),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Saldo disponível',
@@ -233,19 +215,14 @@ class BenefitsHomePage extends StatelessWidget {
               Text(
                 'Benefício fictício para esta demonstração.',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               Column(
                 children: [
                   if (settings.maintenanceMode)
-                    Text(
-                      settings.maintenanceMessage,
-                      textAlign: TextAlign.center,
-                    ),
+                    Text(settings.maintenanceMessage, textAlign: TextAlign.center),
                   const SizedBox(height: AppSpacing.md),
 
                   ElevatedButton(
@@ -305,9 +282,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
       return;
     }
 
-    await context.read<CheckoutCubit>().submitPrescription(
-      Prescription(reference: reference),
-    );
+    await context.read<CheckoutCubit>().submitPrescription(Prescription(reference: reference));
   }
 
   @override
@@ -342,11 +317,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
             BlocSelector<
               CheckoutCubit,
               CheckoutSession,
-              ({
-                CheckoutStatus status,
-                String? message,
-                String? remoteCheckoutId,
-              })
+              ({CheckoutStatus status, String? message, String? remoteCheckoutId})
             >(
               selector: (session) => (
                 status: session.status,
@@ -354,12 +325,9 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                 remoteCheckoutId: session.remoteCheckoutId,
               ),
               builder: (context, feedback) {
-                if (feedback.status == CheckoutStatus.paid &&
-                    feedback.remoteCheckoutId != null) {
+                if (feedback.status == CheckoutStatus.paid && feedback.remoteCheckoutId != null) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -371,9 +339,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Checkout ${feedback.remoteCheckoutId} concluído.',
-                        ),
+                        Text('Checkout ${feedback.remoteCheckoutId} concluído.'),
                       ],
                     ),
                   );
@@ -383,22 +349,15 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                 }
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Semantics(
-                        liveRegion: true,
-                        child: Text(feedback.message!),
-                      ),
-                      if (feedback.status ==
-                          CheckoutStatus.recoverableFailure) ...[
+                      Semantics(liveRegion: true, child: Text(feedback.message!)),
+                      if (feedback.status == CheckoutStatus.recoverableFailure) ...[
                         const SizedBox(height: AppSpacing.sm),
                         ElevatedButton(
-                          onPressed: () =>
-                              context.read<CheckoutCubit>().retry(),
+                          onPressed: () => context.read<CheckoutCubit>().retry(),
                           child: const Text('Tentar novamente'),
                         ),
                       ],
@@ -410,18 +369,15 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
             Expanded(
               child: BlocConsumer<CheckoutCubit, CheckoutSession>(
                 listenWhen: (previous, current) {
-                  return current.medications.length >
-                      previous.medications.length;
+                  return current.medications.length > previous.medications.length;
                 },
                 listener: (context, session) {
                   _eanController.clear();
                   FocusScope.of(context).unfocus();
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Medicamento adicionado à compra.'),
-                    ),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Medicamento adicionado à compra.')));
                 },
                 builder: (context, session) {
                   return MedicationCounterContent(
@@ -443,8 +399,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                             session.medications.first,
                           )
                         : null,
-                    onCreateCheckout:
-                        session.status == CheckoutStatus.creatingPayment
+                    onCreateCheckout: session.status == CheckoutStatus.creatingPayment
                         ? () => context.read<CheckoutCubit>().createCheckout()
                         : null,
                     onConfirmPayment:
@@ -514,11 +469,7 @@ class MedicationCounterContent extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.medication_outlined,
-              size: 48,
-              color: colorScheme.primary,
-            ),
+            Icon(Icons.medication_outlined, size: 48, color: colorScheme.primary),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Leitura de medicamentos',
@@ -529,9 +480,7 @@ class MedicationCounterContent extends StatelessWidget {
             Text(
               'Simule a leitura para acompanhar os itens desta compra.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
             TextFormField(
               controller: prescriptionController,
@@ -585,22 +534,13 @@ class MedicationCounterContent extends StatelessWidget {
               label: 'Quantidade de medicamentos lidos',
               value: '$count',
               child: ExcludeSemantics(
-                child: Text(
-                  medicationLabel,
-                  style: theme.textTheme.titleMedium,
-                ),
+                child: Text(medicationLabel, style: theme.textTheme.titleMedium),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ElevatedButton(
-              onPressed: onScan,
-              child: const Text('Simular leitura'),
-            ),
+            ElevatedButton(onPressed: onScan, child: const Text('Simular leitura')),
             const SizedBox(height: AppSpacing.sm),
-            ElevatedButton(
-              onPressed: onSubmit,
-              child: const Text('Validar compra'),
-            ),
+            ElevatedButton(onPressed: onSubmit, child: const Text('Validar compra')),
             if (onCheckEligibility != null) ...[
               const SizedBox(height: AppSpacing.sm),
               ElevatedButton(
@@ -610,17 +550,11 @@ class MedicationCounterContent extends StatelessWidget {
             ],
             if (onCreateCheckout != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              ElevatedButton(
-                onPressed: onCreateCheckout,
-                child: const Text('Criar pagamento'),
-              ),
+              ElevatedButton(onPressed: onCreateCheckout, child: const Text('Criar pagamento')),
             ],
             if (onConfirmPayment != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              ElevatedButton(
-                onPressed: onConfirmPayment,
-                child: const Text('Confirmar pagamento'),
-              ),
+              ElevatedButton(onPressed: onConfirmPayment, child: const Text('Confirmar pagamento')),
             ],
           ],
         ),
@@ -657,9 +591,7 @@ class CheckoutProgressIndicator extends StatelessWidget {
               children: [
                 for (var i = 1; i <= totalSteps; i++)
                   Icon(
-                    i <= currentStep
-                        ? Icons.check_circle
-                        : Icons.circle_outlined,
+                    i <= currentStep ? Icons.check_circle : Icons.circle_outlined,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 Text(
@@ -670,10 +602,7 @@ class CheckoutProgressIndicator extends StatelessWidget {
               ],
             ),
             SizedBox(height: AppSpacing.sm),
-            LinearProgressIndicator(
-              value: progress,
-              color: theme.colorScheme.primary,
-            ),
+            LinearProgressIndicator(value: progress, color: theme.colorScheme.primary),
           ],
         ),
       ),

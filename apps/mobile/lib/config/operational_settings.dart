@@ -16,8 +16,7 @@ final class StaticOperationalSettings implements OperationalSettings {
 
   const StaticOperationalSettings({
     this.maintenanceMode = false,
-    this.maintenanceMessage =
-        'O Modo Farmácia está temporariamente indisponível.',
+    this.maintenanceMessage = 'O Modo Farmácia está temporariamente indisponível.',
     this.checkoutTimeout = const Duration(milliseconds: 8000),
   });
 }

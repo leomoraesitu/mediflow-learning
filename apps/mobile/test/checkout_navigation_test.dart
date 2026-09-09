@@ -8,9 +8,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
-  testWidgets('abre o Modo Farmácia a partir da tela de benefícios', (
-    tester,
-  ) async {
+  testWidgets('abre o Modo Farmácia a partir da tela de benefícios', (tester) async {
     final pharmacyModePage = find.byType(PharmacyModePage);
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final database = CheckoutDatabase(NativeDatabase.memory());
@@ -41,9 +39,7 @@ void main() {
     expect(find.byType(CheckoutProgressIndicator), findsOneWidget);
   });
 
-  testWidgets('mantém o contador ao sair e reabrir o Modo Farmácia', (
-    tester,
-  ) async {
+  testWidgets('mantém o contador ao sair e reabrir o Modo Farmácia', (tester) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
     final readingSimulation = find.text('Simular leitura');
     final backButton = find.byType(BackButton);
