@@ -1,24 +1,36 @@
 import request from "supertest";
 
-const validToken = "valid-token";
+const validToken = "valid-token-user-01";
 const authorization = `Bearer ${validToken}`;
+
+const otherUserToken = "valid-token-user-02";
+const otherUserAuthorization = `Bearer ${otherUserToken}`;
 
 jest.mock("firebase-admin", () => {
   const store = new Map<string, Record<string, unknown>>();
+
+  // Cada token conhecido mapeia para um usuário distinto. Sem mais de uma
+  // identidade possível, nenhum teste consegue expressar "outro usuário".
+  const validTokens = new Map<string, string>([
+    ["valid-token-user-01", "user-01"],
+    ["valid-token-user-02", "user-02"],
+  ]);
 
   return {
     initializeApp: jest.fn(),
 
     auth: () => ({
-      // Aceita um único token conhecido e rejeita qualquer outro, imitando
-      // o comportamento do Admin SDK, que lança quando o token é inválido
-      // ou expirado em vez de devolver um resultado negativo.
+      // Lança para token desconhecido, imitando o comportamento do Admin SDK,
+      // que lança quando o token é inválido ou expirado em vez de devolver um
+      // resultado negativo.
       verifyIdToken: async (token: string) => {
-        if (token !== "valid-token") {
+        const uid = validTokens.get(token);
+
+        if (uid === undefined) {
           throw new Error("Firebase ID token has invalid signature.");
         }
 
-        return {uid: "user-01"};
+        return {uid};
       },
     }),
 
@@ -82,6 +94,71 @@ describe("API", () => {
       for (const response of responses) {
         expect(response.status).toBe(401);
       }
+    });
+  });
+
+  describe("autorização", () => {
+    it("answers 404 when the checkout belongs to another user", async () => {
+      const idempotencyKey = "key-other-user-01";
+
+      const checkoutPayload = {
+        id: "checkout-local-03",
+        availableBalanceInCents: 2500,
+        prescription: {
+          reference: "prescription-01",
+        },
+        medications: [
+          {
+            ean: "7891234567890",
+          },
+        ],
+      };
+
+      const createResponse = await request(app)
+        .post("/checkouts")
+        .set("Authorization", authorization)
+        .set("Idempotency-Key", idempotencyKey)
+        .send(checkoutPayload);
+
+      expect(createResponse.status).toBe(201);
+
+      const response = await request(app)
+        .get(`/checkouts/${idempotencyKey}`)
+        .set("Authorization", otherUserAuthorization);
+
+      expect(response.status).toBe(404);
+    });
+    it("does not let another user claim a checkout by key replay", async () => {
+      const idempotencyKey = "key-replay-01";
+
+      const checkoutPayload = {
+        id: "checkout-local-04",
+        availableBalanceInCents: 2500,
+        prescription: {
+          reference: "prescription-01",
+        },
+        medications: [
+          {
+            ean: "7891234567890",
+          },
+        ],
+      };
+
+      const createResponse = await request(app)
+        .post("/checkouts")
+        .set("Authorization", authorization)
+        .set("Idempotency-Key", idempotencyKey)
+        .send(checkoutPayload);
+
+      expect(createResponse.status).toBe(201);
+
+      const claimResponse = await request(app)
+        .post("/checkouts")
+        .set("Authorization", otherUserAuthorization)
+        .set("Idempotency-Key", idempotencyKey)
+        .send(checkoutPayload);
+
+      expect(claimResponse.status).toBe(404);
     });
   });
 

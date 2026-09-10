@@ -29,5 +29,11 @@ module.exports = {
     "quotes": ["error", "double"],
     "import/no-unresolved": 0,
     "indent": ["error", 2],
+    // Reconhece o prefixo `_` como descarte deliberado, convenção usada ao
+    // desestruturar um objeto para remover um campo da resposta.
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {varsIgnorePattern: "^_", argsIgnorePattern: "^_"},
+    ],
   },
 };

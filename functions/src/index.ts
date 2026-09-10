@@ -60,8 +60,19 @@ app.post("/checkouts", async (req, res) => {
       return;
     }
 
+    const requesterId = res.locals.user.uid;
+
     const checkoutRef = db.collection("checkouts").doc(idempotencyKey);
     const existingCheckout = await checkoutRef.get();
+    const existingOwnerId = existingCheckout.data()?.userId;
+
+    // O atalho de idempotência também precisa autorizar: sem esta checagem,
+    // enviar a chave de outra pessoa devolveria o identificador do checkout
+    // dela, e o remetente passaria a operar sobre um recurso que não é seu.
+    if (existingCheckout.exists && existingOwnerId !== requesterId) {
+      res.status(404).json({error: "Checkout not found"});
+      return;
+    }
 
     if (existingCheckout.exists) {
       res.status(200).json({id: checkoutRef.id});
@@ -74,6 +85,7 @@ app.post("/checkouts", async (req, res) => {
       prescription,
       medications,
       status: "awaitingConfirmation",
+      userId: res.locals.user.uid,
     });
 
     res.status(201).json({id: checkoutRef.id});
@@ -85,6 +97,7 @@ app.post("/checkouts", async (req, res) => {
 
 app.get("/checkouts/:remoteCheckoutId", async (req, res) => {
   try {
+    const userId = res.locals.user.uid;
     const {remoteCheckoutId} = req.params;
 
     const checkoutSnapshot = await db
@@ -101,8 +114,23 @@ app.get("/checkouts/:remoteCheckoutId", async (req, res) => {
 
     const checkout = checkoutSnapshot.data();
 
+    // Falha fechado: documento sem dados, ou gravado antes desta aula e
+    // portanto sem dono registrado, é tratado como inexistente. E dono
+    // diferente responde 404, e não 403, para não confirmar a existência do
+    // recurso a quem não é dele.
+    if (checkout === undefined || checkout.userId !== userId) {
+      res.status(404).json({
+        error: "Checkout not found",
+      });
+      return;
+    }
+
+    // O dono fica de fora da resposta: quem pede já sabe quem é, e expor o
+    // identificador interno sem que ninguém precise dele é custo sem ganho.
+    const {userId: _owner, ...checkoutWithoutOwner} = checkout;
+
     res.status(200).json({
-      ...checkout,
+      ...checkoutWithoutOwner,
       status: "paid",
     });
   } catch (error) {
