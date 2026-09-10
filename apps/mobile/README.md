@@ -190,6 +190,23 @@ A segunda variável faz o aplicativo chamar `useAuthEmulator` logo após `Fireba
 
 O endereço `10.0.2.2` vale para o emulador Android, que o usa como alias da máquina hospedeira. Em um dispositivo físico na mesma rede, troque pelo IP da máquina. O emulador do Firestore exige Java instalado; consulte o README de `functions/` para os detalhes.
 
+### Contra o backend publicado
+
+Para falar com as Cloud Functions em produção, troque a URL e **omita** a segunda variável:
+
+```bash
+flutter run -d <device-id> \
+  --dart-define=CHECKOUT_API_BASE_URL=https://us-central1-mediflow-learning.cloudfunctions.net/api
+```
+
+Omitir é o correto: `bool.fromEnvironment` já devolve `false` por padrão, e passar `=false` explicitamente só existiria para desfazer um valor que ninguém definiu. O `10.0.2.2` também some, porque o destino deixa de ser a máquina hospedeira, e o `usesCleartextTraffic` do manifesto de debug fica irrelevante, porque a URL é `https`.
+
+**Ao alternar entre os dois modos, limpe os dados do aplicativo.** A credencial do Firebase Auth fica em cache no dispositivo, e uma credencial emitida pelo emulador não vale contra o Firebase real — nem o contrário. O sintoma é descrito na ADR 0001 e não se parece nem um pouco com a causa: falha silenciosa, permanente, sem requisição chegando ao servidor.
+
+```bash
+adb shell pm clear com.leomoraesitu.mediflow_mobile
+```
+
 ## Validação
 
 Entre no diretório do aplicativo e execute:

@@ -34,9 +34,9 @@ Essas duas condições não são garantias arquiteturais permanentes — são o 
 
 `main()` chama `await synchronizer.drain()` antes de `runApp()` — a primeira tela do app espera a tentativa de reenvio do outbox resolver (ou falhar) antes de aparecer. Isso contradiz o espírito offline-first (mostrar a UI imediatamente a partir do estado local, sincronizar em segundo plano sem bloquear). Foi assim que o `OutboxSynchronizer` foi conectado nesta sessão de estudo, e a inconsistência foi identificada nesta discussão, não corrigida — decisão explícita de manter o escopo da Aula 28 em discussão, não em implementação.
 
-### Limite descoberto na Aula 35 e resolvido na Aula 36: identidade inválida travava o outbox
+### Limite descoberto na Aula 35, corrigido pela metade na Aula 36: identidade inválida travava o outbox
 
-> **Resolvido.** A Aula 36 fez o `CheckoutApiClient` renovar a identidade e repetir a requisição uma vez ao receber `401`. O relato abaixo permanece porque descreve o mecanismo da falha e as duas premissas erradas que a correção precisou derrubar.
+> **Resolvido apenas em parte.** A Aula 36 fez o `CheckoutApiClient` renovar a identidade e repetir a requisição uma vez ao receber `401`. A Aula 40 mostrou que essa cobertura tem um buraco: ela depende de existir uma **resposta** `401`, e a forma mais direta de identidade inválida não produz resposta alguma. Ver "O que a Aula 40 falsificou", ao final desta seção.
 
 Com a autenticação das rotas do backend, o outbox ganhou uma forma nova de falhar permanentemente. `main()` só autentica quando não há usuário:
 
@@ -64,10 +64,31 @@ A validação contra os emuladores derrubou duas premissas do desenho original, 
 
 O cenário foi reproduzido de ponta a ponta: evento enfileirado durante uma queda do backend, identidade invalidada, aplicativo reiniciado. Antes da correção, o evento era rejeitado a cada inicialização; depois, ele chegou ao Firestore sozinho, com o outbox esvaziando sem nenhuma intervenção.
 
+#### O que a Aula 40 falsificou: a recuperação depende de uma resposta que pode nunca existir
+
+O primeiro deploy real expôs um terceiro modo de falha, invisível sob o emulador.
+
+O aplicativo tinha em cache uma credencial emitida pelo **emulador de Authentication**, gravada durante as Aulas 34 a 39. Executado sem `USE_FIREBASE_EMULATORS`, ele passou a falar com o Firebase real, que não reconhece aquele refresh token. `getIdToken()` falhou — e o caminho normal de `FirebaseAuthTokenProvider.token()` não tem proteção: só o ramo `forceRefresh` captura `FirebaseAuthException`.
+
+A exceção sobe dentro do `onRequest` do interceptor. O Dio a converte em `DioException` do tipo `unknown`, que a classificação da Aula 39 mapeia para `UnknownFailure` — deliberadamente **não** transitória e por isso não retentada, decisão correta em si: repetir uma falha não compreendida é ruído.
+
+**O buraco está no encadeamento.** A renovação de identidade da Aula 36 é acionada por `e.response?.statusCode == 401`. Mas a requisição nunca foi enviada: não houve resposta, logo não houve `401`, logo a renovação jamais disparou. O mecanismo construído para "identidade inválida" ficou cego justamente para o caso em que o token **não chega a ser obtido**.
+
+O resultado é o pior formato possível de falha: silenciosa, permanente, sem retentativa, sem recuperação, sem nada no log do servidor — porque nada chega ao servidor. Diagnosticá-la exigiu descartar rede, DNS, timeout, Remote Config e provedor de login antes de chegar ao interceptor.
+
+Quatro evidências convergentes sustentam o diagnóstico, já que a exceção é engolida pelo `on Exception` de `CheckoutCubit.createCheckout`:
+
+1. Nenhuma requisição do aplicativo apareceu nos logs da function, embora chamadas de `curl` feitas no mesmo período aparecessem.
+2. O outbox continha o evento enfileirado, provando que `OutboxCheckoutRepository.create()` executou e que a falha veio depois, na camada de rede.
+3. Nenhuma conta anônima foi criada no projeto naquele dia, provando que a renovação da Aula 36 não chegou a ser acionada.
+4. Limpar a credencial em cache resolveu por completo, e o fluxo de checkout percorreu as quatro rotas contra produção na tentativa seguinte.
+
+A correção fica para uma aula própria, porque a parte difícil é o teste: ele precisa reproduzir "o provedor de token lança" sem se tornar mais um teste que não pode falhar — o padrão recorrente que este projeto já encontrou em quatro ocasiões distintas.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura, misto na escrita (query vs. command), e bloqueante na inicialização por causa do `drain()`.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
 - O bloqueio de `main()` no `drain()` é uma dívida técnica reconhecida e registrada aqui deliberadamente, para não ser esquecida nem redescoberta do zero numa aula futura. Corrigi-la (ex.: chamar `drain()` sem `await` antes de `runApp`, deixando-a rodar em segundo plano) fica fora do escopo desta aula.
-- A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer também contra invalidação de identidade, e não só contra falhas de rede. O que a sustenta é a renovação automática no `401`, com retentativa única. Ela continua **não** valendo se a renovação em si falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar: nesse caso o evento permanece na fila, o que é o comportamento desejado, mas sem nenhum sinal ao usuário de que algo está pendente.
+- A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade **que se manifesta como `401`**, e não só contra falhas de rede. O que a sustenta é a renovação automática nesse status, com retentativa única. Ela **não** vale em dois casos: se a renovação em si falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar; e, como a Aula 40 mostrou, se a obtenção do token falhar antes do envio, situação em que não há `401` para acionar a renovação. Nos dois casos o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
 - Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real de renovação funciona. As duas premissas erradas descritas acima passaram por toda a suíte e só apareceram na validação manual contra os emuladores.
