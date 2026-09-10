@@ -10,8 +10,8 @@ Uma única function HTTP (`api`) expõe um app Express com as quatro rotas que o
 | --- | --- | --- |
 | `POST /prescriptions/validate` | `{ reference }` | `{ isValid: true }` |
 | `GET /medications/:ean/eligibility` | — | `{ isEligible: true }` |
-| `POST /checkouts` | sessão + header `Idempotency-Key` | `{ id }` |
-| `GET /checkouts/:remoteCheckoutId` | — | sessão completa com `status` |
+| `POST /checkouts` | sessão + header `Idempotency-Key` | `{ id }`, ou `404` se a chave pertence a outro usuário |
+| `GET /checkouts/:remoteCheckoutId` | — | sessão completa com `status`, ou `404` se o checkout é de outro usuário |
 
 Agrupar as quatro rotas em uma única function com Express, em vez de quatro functions separadas, é o padrão recomendado pela documentação oficial para APIs HTTP com várias rotas e parâmetros de caminho.
 
@@ -38,6 +38,22 @@ O posicionamento é o que define o alcance: `app.use(requireAuth)` vem depois de
 Proteger também `validate` e `eligibility`, que hoje sempre respondem `true`, é deliberado. A aparente inocuidade é um acidente da implementação fictícia: numa versão real elas consultam dados de benefício de uma pessoa, e um endpoint aberto que responde sobre elegibilidade é um vazamento. Deixar exceções abertas também cria uma pendência que alguém precisa lembrar de fechar depois.
 
 Quando as functions rodam sob o emulador, o Admin SDK detecta a variável `FIREBASE_AUTH_EMULATOR_HOST` e valida contra o emulador de Authentication em vez do Firebase real, sem configuração adicional. Por isso o aplicativo também precisa apontar para esse emulador, ou os dois estarão validando identidades de mundos diferentes.
+
+### Autorização
+
+Autenticar responde "quem é você"; autorizar responde "o que você pode". Até a Aula 38 o backend só fazia a primeira: o `res.locals.user` preenchido pelo middleware nunca era lido por rota alguma, e qualquer usuário anônimo válido acessava o checkout de qualquer outro.
+
+`POST /checkouts` passou a gravar o `uid` do criador no documento, e `GET /checkouts/:id` só entrega a quem gravou. A resposta **não** inclui esse campo: quem pede já sabe quem é, e expor o identificador interno sem que ninguém precise dele é custo sem ganho. O teste `keeps the request body intact after authentication` funciona como guardião permanente disso, porque compara a resposta com o payload enviado usando igualdade estrita.
+
+Duas decisões merecem registro por não serem óbvias.
+
+**`404` em vez de `403` para recurso alheio.** Responder `403` confirmaria que aquele checkout existe, permitindo a alguém enumerar identificadores e descobrir quais são válidos. `404` esconde a existência. É a escolha certa para segurança e ruim para depuração — quem investiga um problema legítimo recebe a mesma resposta de quem tenta acesso indevido.
+
+**O atalho de idempotência também precisa autorizar.** Este é o furo menos evidente. A otimização construída na Aula 33 devolve `200` com o identificador existente quando a chave já foi usada; sem verificação de dono, enviar a chave de outra pessoa entregaria o `remoteCheckoutId` dela, e o remetente passaria a operar sobre um recurso que não é seu. A verificação vive nos dois caminhos: na leitura e na deduplicação.
+
+O comportamento para documentos sem dono é **falhar fechado**: um documento sem dados, ou gravado antes desta aula e portanto sem `userId`, é tratado como inexistente. Isso torna inacessíveis os checkouts fictícios das aulas anteriores, o que aqui é irrelevante, mas num sistema real exigiria migração antes da mudança.
+
+A autorização é por propriedade e nada mais. Não há papéis, permissões nem hierarquia — um operador de farmácia não tem acesso diferenciado, porque esse conceito ainda não existe no projeto.
 
 ## Requisitos
 
@@ -68,7 +84,7 @@ npm run lint
 npm test
 ```
 
-O resultado esperado é compilação limpa, análise estática sem problemas e 13 testes aprovados.
+O resultado esperado é compilação limpa, análise estática sem problemas e 15 testes aprovados.
 
 Os testes usam `supertest` para chamar o app Express diretamente em memória, com um fake do Firestore substituindo `firebase-admin` via `jest.mock`. Não dependem de nenhum emulador em execução, o que os mantém rápidos e reproduzíveis em qualquer máquina. Dois casos concentram o valor da suíte. O da retentativa: duas chamadas a `POST /checkouts` com a mesma `Idempotency-Key` devem devolver `201` e depois `200`, com o mesmo `id`. E o que dispara uma requisição sem token para **cada uma das quatro rotas** e exige `401` em todas — foi ele que teria pego a primeira versão do middleware, que protegia apenas uma rota. Um terceiro caso verifica que o corpo da requisição sobrevive à autenticação, protegendo contra uma versão anterior que sobrescrevia `req.body` com as claims do token.
 
@@ -89,4 +105,5 @@ O comportamento também foi verificado manualmente contra o emulador real, com F
 - [Admin SDK e Firestore](https://firebase.google.com/docs/firestore/quickstart#node.js)
 - [Regras de segurança do Firestore](https://firebase.google.com/docs/firestore/security/get-started)
 - [Verificar tokens de ID no backend](https://firebase.google.com/docs/auth/admin/verify-id-tokens)
+- [OWASP: Broken Access Control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)
 - [Emulador de Authentication](https://firebase.google.com/docs/emulator-suite/connect_auth)
