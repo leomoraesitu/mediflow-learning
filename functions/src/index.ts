@@ -1,8 +1,10 @@
 import * as admin from "firebase-admin";
 import express from "express";
 import {onRequest} from "firebase-functions/https";
+import {setGlobalOptions} from "firebase-functions/options";
 
 admin.initializeApp();
+setGlobalOptions({maxInstances: 5});
 
 const db = admin.firestore();
 

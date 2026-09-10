@@ -55,6 +55,16 @@ O comportamento para documentos sem dono é **falhar fechado**: um documento sem
 
 A autorização é por propriedade e nada mais. Não há papéis, permissões nem hierarquia — um operador de farmácia não tem acesso diferenciado, porque esse conceito ainda não existe no projeto.
 
+### Escala e custo
+
+`setGlobalOptions({maxInstances: 5})`, no topo de `src/index.ts`, limita quantas instâncias podem existir ao mesmo tempo. Com a `concurrency` padrão da 2ª geração (80 requisições por instância), o teto cobre a demanda real deste projeto com folga de várias ordens de grandeza — ele não existe para dimensionar capacidade, e sim para limitar o alcance de um defeito. Um laço acidental esbarra numa parede em vez de escalar livremente.
+
+O valor não foi escolhido por cálculo de tráfego, mas pelo menor número que nunca é atingido em operação legítima. Mais de uma instância pode coexistir durante um deploy (a revisão nova sobe enquanto a antiga drena), durante a reciclagem que a plataforma faz sem aviso, e num cold start sob rajada. São poucas, não dezenas. Um teto de 1 seria apertado demais: ele passaria a ser atingido nessas transições normais, e a retentativa automática do cliente absorveria o resultado em silêncio — um defeito de configuração mascarado por uma política de resiliência.
+
+`minInstances` é deliberadamente **omitido**. Ele elimina cold start mantendo instâncias vivas, e a documentação do pacote é explícita: instâncias ociosas são cobradas por memória alocada e 10% da CPU. É a única forma de este projeto gerar custo sem tráfego nenhum.
+
+`setGlobalOptions` devolve `void` — ela age por efeito colateral sobre um estado global do SDK que `onRequest` consulta depois. Atribuir seu retorno a uma constante compila, mas quebra o lint, e o `predeploy` interrompe o deploy antes do upload.
+
 ## Requisitos
 
 - Node 24 ou superior (`engines` do `package.json` declara `24`; o emulador avisa se a versão global diferir, mas funciona).
@@ -74,6 +84,33 @@ firebase emulators:start --only auth,functions,firestore
 ```
 
 A function fica em `http://127.0.0.1:5001/mediflow-learning/us-central1/api` e a interface dos emuladores em `http://127.0.0.1:4000`.
+
+## Deploy
+
+Requer o plano Blaze. Três coisas que o emulador oferecia de graça precisam existir no projeto real, e a ausência de qualquer uma delas produz um sintoma que parece defeito de código:
+
+| Pré-requisito | O que acontece sem ele |
+| --- | --- |
+| Cloud Firestore API habilitada e banco provisionado | O deploy conclui, e a primeira escrita falha |
+| Provedor de login **Anônimo** ativado | `signInAnonymously()` falha, o token não é enviado e tudo responde `401` |
+| Política de limpeza do Artifact Registry | Imagens de container acumulam cobrando armazenamento |
+
+O banco padrão deste projeto é regional em `us-central1`, mesma região das functions — operações do Admin SDK acontecem dentro do datacenter em vez de atravessar rede. A escolha é permanente e foi feita contra o padrão do console, que oferece a multirregião `nam5`: replicação por várias regiões dos EUA, com preço e latência de escrita maiores, para uma garantia de disponibilidade que este projeto não precisa.
+
+```bash
+firebase deploy --only firestore:rules
+firebase deploy --only functions
+```
+
+Nesta ordem: as regras primeiro, para que não exista janela em que o banco responde com uma configuração que não é a versionada.
+
+Os hooks `predeploy` do `firebase.json` executam `npm run lint` e `npm run build` antes do upload. É o portão que impede que código que não compila — ou que não passa no lint — chegue a produção.
+
+Antes de publicar, vale apagar `lib/` e reconstruir. A lista `ignore` do `firebase.json` exclui `node_modules` e logs, mas **não** exclui `lib/`, que é justamente o que precisa subir. Qualquer arquivo esquecido ali embarca no pacote, e `lib/` está no `.gitignore` — um `lib/index.test.js` órfão de uma compilação antiga não apareceria em nenhum `git diff`.
+
+As dependências **não** sobem. O que é enviado é o código compilado mais o `package.json`, e o build container executa `npm install` no ambiente de produção. Isso resolve pacotes com binários nativos para a arquitetura certa, mas significa que o servidor resolve os ranges `^` do `package.json` no momento do build, e não as versões exatas que os testes locais aprovaram. Não há `package-lock.json` versionado; adicioná-lo fecharia essa fresta.
+
+A URL da function publicada é `https://us-central1-mediflow-learning.cloudfunctions.net/api`.
 
 ## Validação
 
