@@ -152,6 +152,18 @@ A invalidação precisa vir de fora do SDK, e a escolha do endpoint importa mais
 
 O valor do teste foi verificado por experimento, não por raciocínio: removendo o `signOut()` do provedor, ele falha com `Expected: not '<uid>' / Actual: '<uid>'`; restaurando, volta a passar. Ele distingue a versão certa da errada, que é a única propriedade que torna um teste útil.
 
+Na Aula 39, a classificação de falhas criada na Aula 27 ganhou o primeiro consumidor de produção. Até então, `TimeoutFailure`, `ServerUnavailableFailure`, `ConnectivityFailure`, `PermanentFailure` e `UnknownFailure` existiam e só eram lidas por testes — o `CheckoutCubit` capturava `on Exception` e tratava tudo igual.
+
+O `CheckoutApiClient` passou a ter um segundo interceptor, que trata `401` e falhas transitórias em camadas separadas. Um `switch` exaustivo sobre a `sealed class` decide o que merece nova tentativa imediata: timeout, servidor indisponível e falta de conectividade sim; falha permanente e não classificada não. A exaustividade é o ponto — uma variante nova de `NetworkFailure` quebra a compilação até alguém decidir de que lado ela fica, em vez de cair num `default` silencioso.
+
+**Retentar automaticamente só é seguro por causa da Aula 33.** Um timeout não diz se o servidor processou a requisição ou apenas demorou a responder; sem a chave de idempotência, uma segunda tentativa poderia criar dois checkouts. Este é o tipo de dependência entre aulas que não aparece no código e vale registrar.
+
+Três horizontes de retentativa convivem agora, e a distinção entre eles é o conceito da aula. O interceptor de autenticação retenta **uma vez, imediatamente**, para credencial recusada. O interceptor de falhas transitórias retenta **duas vezes, com recuo de 200 e 400 milissegundos**, para instabilidade passageira. E o outbox retenta **na próxima inicialização do aplicativo**, para quando a rede caiu de vez. Cada um cobre uma escala de tempo diferente.
+
+As esperas são parâmetro do construtor, com padrão para produção. Isso mantém a suíte rápida — os testes passam `Duration.zero` — e permite desligar a retentativa com uma lista vazia, o que quatro testes existentes precisaram fazer: eles simulam falhas transitórias com uma única resposta programada e verificam outra coisa, então a retentativa esgotava a fila do fake e mudava o tipo do erro. Não foi defeito dos testes; foi a suíte percebendo corretamente que o comportamento mudou.
+
+Uma armadilha vale registrar. A primeira versão do interceptor fazia as retentativas num laço dentro de uma única passagem do `onError`. Parece equivalente, mas `_dio.fetch` percorre a cadeia de interceptors de novo: cada falha abria outro `onError`, com outro laço, multiplicando as tentativas sem controle — um teste passou a levar trinta segundos. A forma correta é uma tentativa por passagem, contada em `RequestOptions.extra`, como o interceptor de autenticação já fazia.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -193,7 +205,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 87 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` e a renovação automática de credencial após um `401` — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 91 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401` e a retentativa de falhas transitórias com recuo exponencial — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
@@ -266,4 +278,5 @@ flutter test integration_test/identity_recovery_test.dart -d <device-id>
 - [`String.fromEnvironment`](https://api.dart.dev/dart-core/String/String.fromEnvironment.html)
 - [`Error` e `Exception` em Dart](https://dart.dev/language/error-handling)
 - [Testes de integração no Flutter](https://docs.flutter.dev/testing/integration-tests)
+- [Estratégias de retry e backoff](https://cloud.google.com/storage/docs/retry-strategy)
 - [Emulador de Authentication](https://firebase.google.com/docs/emulator-suite/connect_auth)

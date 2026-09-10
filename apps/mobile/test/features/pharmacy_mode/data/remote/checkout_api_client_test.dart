@@ -159,6 +159,7 @@ void main() {
       dio,
       tokenProvider: ({bool forceRefresh = false}) async =>
           forceRefresh ? 'test-token-renewed' : 'test-token',
+      retryDelays: const [],
     );
 
     await expectLater(
@@ -172,5 +173,138 @@ void main() {
     expect(capturedHeaders, hasLength(1));
 
     expect(capturedHeaders![0]['Authorization'], 'Bearer test-token');
+  });
+  test('retries a transient failure and succeeds on the next attempt', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = [
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        503,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    final response = await apiClient.post('/checkouts', data: const {});
+    expect(response, equals(<String, dynamic>{'id': 'remote-checkout-id'}));
+
+    final capturedHeaders = fakeAdapter.capturedHeaders['/checkouts'];
+    expect(capturedHeaders, isNotNull);
+    expect(capturedHeaders, hasLength(2));
+
+    expect(capturedHeaders?[0]['Authorization'], 'Bearer test-token');
+    expect(capturedHeaders?[1]['Authorization'], 'Bearer test-token');
+  });
+
+  test('gives up after the configured number of attempts', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = [
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        503,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        503,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        503,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await expectLater(
+      () => apiClient.post('/checkouts', data: const {}),
+      throwsA(isA<ServerUnavailableFailure>()),
+    );
+
+    final capturedHeaders = fakeAdapter.capturedHeaders['/checkouts'];
+    expect(capturedHeaders, isNotNull);
+    expect(capturedHeaders, hasLength(3));
+
+    expect(capturedHeaders?[0]['Authorization'], 'Bearer test-token');
+    expect(capturedHeaders?[1]['Authorization'], 'Bearer test-token');
+    expect(capturedHeaders?[2]['Authorization'], 'Bearer test-token');
+  });
+
+  test('does not retry a permanent failure', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = [
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        400,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await expectLater(
+      () => apiClient.post('/checkouts', data: const {}),
+      throwsA(isA<PermanentFailure>()),
+    );
+
+    final capturedHeaders = fakeAdapter.capturedHeaders['/checkouts'];
+    expect(capturedHeaders, isNotNull);
+    expect(capturedHeaders, hasLength(1));
+
+    expect(capturedHeaders?[0]['Authorization'], 'Bearer test-token');
+  });
+  test('does not retry an unclassified failure', () async {
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await expectLater(
+      () => apiClient.post('/sem-resposta', data: const {}),
+      throwsA(isA<UnknownFailure>()),
+    );
+
+    final capturedHeaders = fakeAdapter.capturedHeaders['/sem-resposta'];
+    expect(capturedHeaders, isNotNull);
+    expect(capturedHeaders, hasLength(1));
+
+    expect(capturedHeaders?[0]['Authorization'], 'Bearer test-token');
   });
 }
