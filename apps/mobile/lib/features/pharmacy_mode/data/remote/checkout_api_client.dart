@@ -5,11 +5,17 @@ typedef AuthTokenProvider = Future<String?> Function({bool forceRefresh});
 
 final class CheckoutApiClient {
   final Dio _dio;
+  final List<Duration> _retryDelays;
+  static const List<Duration> defaultRetryDelays = [
+    Duration(milliseconds: 200),
+    Duration(milliseconds: 400),
+  ];
 
   CheckoutApiClient({
     required String baseUrl,
     required Duration timeout,
     required AuthTokenProvider tokenProvider,
+    this._retryDelays = defaultRetryDelays,
   }) : _dio = Dio(
          BaseOptions(
            baseUrl: baseUrl,
@@ -19,18 +25,55 @@ final class CheckoutApiClient {
          ),
        ) {
     _addAuthInterceptor(tokenProvider);
+    _addRetryInterceptor();
   }
 
-  CheckoutApiClient.withDio(Dio dio, {required AuthTokenProvider tokenProvider}) : _dio = dio {
+  CheckoutApiClient.withDio(
+    Dio dio, {
+    required AuthTokenProvider tokenProvider,
+    this._retryDelays = defaultRetryDelays,
+  }) : _dio = dio {
     _addAuthInterceptor(tokenProvider);
+    _addRetryInterceptor();
+  }
+
+  static bool _isTransient(NetworkFailure failure) => switch (failure) {
+    TimeoutFailure() || ServerUnavailableFailure() || ConnectivityFailure() => true,
+    PermanentFailure() || UnknownFailure() => false,
+  };
+
+  void _addRetryInterceptor() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (DioException e, handler) async {
+          final options = e.requestOptions;
+          final attempt = (options.extra['retryCount'] as int?) ?? 0;
+
+          if (attempt >= _retryDelays.length) {
+            return handler.next(e);
+          }
+
+          if (!_isTransient(NetworkFailure.fromDioException(e))) {
+            return handler.next(e);
+          }
+
+          await Future<void>.delayed(_retryDelays[attempt]);
+          options.extra['retryCount'] = attempt + 1;
+
+          try {
+            handler.resolve(await _dio.fetch<dynamic>(options));
+          } on DioException catch (retryError) {
+            handler.next(retryError);
+          }
+        },
+      ),
+    );
   }
 
   void _addAuthInterceptor(AuthTokenProvider tokenProvider) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Numa retentativa, o header já foi definido pelo onError com a
-          // credencial renovada. Reescrevê-lo aqui desfaria a renovação.
           if (options.extra['authRetried'] == true) {
             return handler.next(options);
           }

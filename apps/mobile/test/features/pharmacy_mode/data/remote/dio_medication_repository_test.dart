@@ -18,9 +18,13 @@ void main() {
     fakeAdapter = FakeHttpClientAdapter();
     dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
 
+    // Retentativa desligada: estes testes verificam a tradução de falhas feita
+    // pelo repositório, não a política de retentativa do cliente. Com ela
+    // ligada, um 500 seria repetido e esgotaria a fila de respostas do fake.
     apiClient = CheckoutApiClient.withDio(
       dio,
       tokenProvider: ({bool forceRefresh = false}) async => 'test-token',
+      retryDelays: const [],
     );
     repository = DioMedicationRepository(apiClient: apiClient);
     medication = Medication(ean: '1234567890123', name: 'Some Medication', unitPriceInCents: 10);
