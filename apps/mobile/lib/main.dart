@@ -7,6 +7,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mediflow_mobile/config/firebase_auth_gateway.dart';
 import 'package:mediflow_mobile/config/firebase_auth_token_provider.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/config/remote_config_operational_settings.dart';
@@ -65,7 +66,9 @@ void main() async {
   final apiClient = CheckoutApiClient(
     baseUrl: checkoutApiBaseUrl,
     timeout: settings.checkoutTimeout,
-    tokenProvider: FirebaseAuthTokenProvider(FirebaseAuth.instance).token,
+    tokenProvider: FirebaseAuthTokenProvider(
+      FirebaseAuthGateway(firebaseAuth: FirebaseAuth.instance),
+    ).token,
   );
 
   final outboxCheckoutRepository = OutboxCheckoutRepository(

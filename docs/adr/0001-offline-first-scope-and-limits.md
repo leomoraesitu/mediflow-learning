@@ -34,9 +34,9 @@ Essas duas condições não são garantias arquiteturais permanentes — são o 
 
 `main()` chama `await synchronizer.drain()` antes de `runApp()` — a primeira tela do app espera a tentativa de reenvio do outbox resolver (ou falhar) antes de aparecer. Isso contradiz o espírito offline-first (mostrar a UI imediatamente a partir do estado local, sincronizar em segundo plano sem bloquear). Foi assim que o `OutboxSynchronizer` foi conectado nesta sessão de estudo, e a inconsistência foi identificada nesta discussão, não corrigida — decisão explícita de manter o escopo da Aula 28 em discussão, não em implementação.
 
-### Limite descoberto na Aula 35, corrigido pela metade na Aula 36: identidade inválida travava o outbox
+### Limite descoberto na Aula 35, corrigido em duas etapas: identidade inválida travava o outbox
 
-> **Resolvido apenas em parte.** A Aula 36 fez o `CheckoutApiClient` renovar a identidade e repetir a requisição uma vez ao receber `401`. A Aula 40 mostrou que essa cobertura tem um buraco: ela depende de existir uma **resposta** `401`, e a forma mais direta de identidade inválida não produz resposta alguma. Ver "O que a Aula 40 falsificou", ao final desta seção.
+> **Resolvido na Aula 41.** A Aula 36 cobriu a rejeição — servidor respondendo `401`. A Aula 40 mostrou que faltava a outra metade: a falha ao **obter** o token não produz resposta alguma, logo não produz `401`, logo não acionava recuperação nenhuma. A Aula 41 fez os dois gatilhos convergirem. O relato abaixo permanece porque descreve os mecanismos e as três premissas que caíram no caminho.
 
 Com a autenticação das rotas do backend, o outbox ganhou uma forma nova de falhar permanentemente. `main()` só autentica quando não há usuário:
 
@@ -85,10 +85,27 @@ Quatro evidências convergentes sustentam o diagnóstico, já que a exceção é
 
 A correção fica para uma aula própria, porque a parte difícil é o teste: ele precisa reproduzir "o provedor de token lança" sem se tornar mais um teste que não pode falhar — o padrão recorrente que este projeto já encontrou em quatro ocasiões distintas.
 
+#### Como a Aula 41 fechou: uma costura antes da correção
+
+A correção exigiu um passo anterior. `FirebaseAuthTokenProvider` recebia `FirebaseAuth`, uma classe concreta do plugin que depende de canal de plataforma — por isso a política de identidade só tinha cobertura em `integration_test`, e por isso a Aula 36 pôde ficar verde estando errada.
+
+A costura é `AuthGateway`: três operações (`currentUserToken`, `signOut`, `signInAnonymously`) que falam apenas `String?`. Nenhuma devolve `User` — se devolvesse, o fake precisaria imitar outra classe do plugin e a fronteira seria nominal. `FirebaseAuthGateway` implementa a interface e traduz `FirebaseAuthException` em `AuthGatewayException`, passando a ser o único arquivo do aplicativo, fora do `main.dart`, que importa `firebase_auth`.
+
+A refatoração foi validada pelo placar: 91 testes verdes antes, 91 depois. Costura que muda comportamento não é costura.
+
+Só então a política mudou. O caminho normal ganhou proteção, e os dois gatilhos passaram a convergir para um único `_recoverIdentity()`. Um detalhe de Dart decide se funciona: dentro do `try`, `return await` é obrigatório — sem o `await`, o método devolve o future pendente e escapa do bloco antes da falha, e o `catch` nunca dispara.
+
+**A terceira premissa que caiu.** As duas primeiras, da Aula 36, eram sobre o comportamento do SDK. Esta é sobre o desenho da própria política: supunha-se que "identidade inválida" sempre se manifesta como resposta do servidor. Não se manifesta. Quando a credencial não pode sequer ser trocada por um token, não há interlocutor, não há status, e qualquer política ancorada em código HTTP é cega.
+
+Os três testes de unidade foram validados por quebra dirigida, com atribuição conferida individualmente. O terceiro — `does not recover when the current token is obtained successfully` — só tem valor por causa dos contadores do fake: uma correção que recuperasse por precaução devolveria o token correto e passaria numa asserção de valor, enquanto criaria uma conta anônima nova a cada requisição de rede.
+
+No caminho, o teste de integração da Aula 37 revelou-se falho pelo oráculo: lia o `uid` anterior das claims do ID token, que não têm chave `uid` — o identificador vem em `user_id`/`sub`. O valor era `null`, e a asserção final comparava `String` contra `null`, passando em qualquer estado do código. Corrigido para ler de `currentUser` e reverificado por quebra.
+
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura, misto na escrita (query vs. command), e bloqueante na inicialização por causa do `drain()`.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
 - O bloqueio de `main()` no `drain()` é uma dívida técnica reconhecida e registrada aqui deliberadamente, para não ser esquecida nem redescoberta do zero numa aula futura. Corrigi-la (ex.: chamar `drain()` sem `await` antes de `runApp`, deixando-a rodar em segundo plano) fica fora do escopo desta aula.
-- A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade **que se manifesta como `401`**, e não só contra falhas de rede. O que a sustenta é a renovação automática nesse status, com retentativa única. Ela **não** vale em dois casos: se a renovação em si falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar; e, como a Aula 40 mostrou, se a obtenção do token falhar antes do envio, situação em que não há `401` para acionar a renovação. Nos dois casos o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
-- Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real de renovação funciona. As duas premissas erradas descritas acima passaram por toda a suíte e só apareceram na validação manual contra os emuladores.
+- A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade nas duas formas: a rejeição pelo servidor (`401`, desde a Aula 36) e a impossibilidade de obter o token (desde a Aula 41). Ela continua **não** valendo se a própria recuperação falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar. Nesse caso o provedor devolve `null`, a requisição sai sem header, o servidor recusa e o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
+- Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real funciona ponta a ponta. Desde a Aula 41 a política tem cobertura de unidade própria, com um fake de `AuthGateway`, e a Aula 37 mantém um teste de integração contra o emulador de Authentication; o que continua sem cobertura é a composição do `main()`. As premissas erradas descritas acima passaram por toda a suíte em seu tempo, e cada uma só apareceu ao rodar contra um ambiente real — duas contra os emuladores, uma contra o Firebase de produção.

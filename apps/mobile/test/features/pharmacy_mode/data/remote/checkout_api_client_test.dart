@@ -307,4 +307,24 @@ void main() {
 
     expect(capturedHeaders?[0]['Authorization'], 'Bearer test-token');
   });
+  test('reports an unknown failure when the token provider throws', () async {
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async {
+        throw Exception('Token provider error');
+      },
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await expectLater(
+      () => apiClient.post('/checkouts', data: const {}),
+      throwsA(isA<UnknownFailure>()),
+    );
+
+    // Nenhuma requisição é capturada: a exceção nasce no `onRequest`, antes
+    // do envio. É exatamente o que os logs da function mostraram na Aula 40
+    // — nada chega ao servidor, e por isso não existe 401 para acionar a
+    // renovação de identidade.
+    expect(fakeAdapter.capturedHeaders['/checkouts'], isNull);
+  });
 }
