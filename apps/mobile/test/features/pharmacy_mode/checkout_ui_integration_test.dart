@@ -76,7 +76,7 @@ void main() {
     final contentContext = tester.element(find.byType(MedicationCounterContent));
     final checkoutCubit = contentContext.read<CheckoutCubit>();
 
-    checkoutCubit.scanMedication(
+    await checkoutCubit.scanMedication(
       const Medication(
         ean: '7891000000011',
         name: 'Medicamento demonstrativo',

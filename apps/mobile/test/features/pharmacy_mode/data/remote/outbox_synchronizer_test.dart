@@ -156,6 +156,41 @@ void main() {
     expect(pendingEvents.length, 1);
     expect(pendingEvents.single.idempotencyKey, 'key-fail');
   });
+  test('completes without throwing when reading the outbox fails', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final pendingSession = CheckoutSession(
+      id: 'session-id',
+      availableBalanceInCents: 1000,
+      prescription: null,
+      medications: [],
+      status: CheckoutStatus.creatingPayment,
+      idempotencyKey: 'key-pending',
+    );
+
+    // Este evento nunca chega a ser processado — a leitura da fila falha
+    // antes. Ele está aqui por dois motivos: descreve o cenário real (há uma
+    // compra pendente que o aplicativo sequer consegue enxergar) e, sobretudo,
+    // é o que abre a conexão do Drift. O banco abre preguiçosamente, então
+    // `close()` num banco nunca usado não fecha nada — a consulta seguinte
+    // reabriria e o teste passaria sem exercitar falha alguma.
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-pending',
+      operationType: 'createCheckout',
+      payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(pendingSession).toMap()),
+    );
+
+    final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
+
+    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+
+    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+
+    await database.close();
+
+    await expectLater(synchronizer.drain(), completes);
+  });
 }
 
 final class _FakeCheckoutRepository implements CheckoutRepository {

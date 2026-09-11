@@ -180,6 +180,18 @@ As esperas são parâmetro do construtor, com padrão para produção. Isso mant
 
 Uma armadilha vale registrar. A primeira versão do interceptor fazia as retentativas num laço dentro de uma única passagem do `onError`. Parece equivalente, mas `_dio.fetch` percorre a cadeia de interceptors de novo: cada falha abria outro `onError`, com outro laço, multiplicando as tentativas sem controle — um teste passou a levar trinta segundos. A forma correta é uma tentativa por passagem, contada em `RequestOptions.extra`, como o interceptor de autenticação já fazia.
 
+### Inicialização não bloqueante (Aula 42)
+
+`main()` executa `unawaited(synchronizer.drain())`: a primeira tela aparece a partir do estado local e o reenvio do outbox acontece em segundo plano.
+
+Tirar o `await` só é seguro porque `drain()` passou a ser total. O `try/catch` do laço, da Aula 27, protegia cada evento mas deixava a leitura da fila de fora; num future descartado, o que escapa não derruba o aplicativo de forma visível, vira erro assíncrono não tratado com a interface já em uso. A captura nova inclui `Error` de propósito — o Drift lança `StateError` para banco em estado inválido, e `on Exception` não o pegaria.
+
+A regra `unawaited_futures` foi ligada no `analysis_options.yaml` no mesmo movimento. Ela não vem no `flutter_lints`, então até então apagar um `await` passava limpo pela análise. Na primeira execução apontou dois pontos, ambos em teste e ambos legítimos, incluindo uma corrida em que a asserção lia o snapshot que o `retry()` não-esperado deveria ter gravado.
+
+A sobreposição criada pela mudança — usuário criando um pagamento enquanto o mesmo evento é reenviado — só não duplica cobrança por causa da idempotência construída na Aula 33: a chave é o identificador do documento no Firestore, então a segunda requisição encontra o existente.
+
+A verificação foi por medição, com rede lenta emulada e o mesmo evento pendente restaurado antes de cada partida a frio: mediana de ~4,1 s com `await` contra ~2,5 s sem, e — o que mais importa — variância apertada (2,2 a 2,8 s) em vez de dependente da rede (3,4 a 7,1 s). Os números completos estão na ADR 0001.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -238,7 +250,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 95 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial e a recuperação de identidade quando o token não chega a ser obtido — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 96 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido e a tolerância do `drain()` a uma falha de leitura do outbox — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
