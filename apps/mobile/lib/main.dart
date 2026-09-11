@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -93,7 +95,20 @@ void main() async {
     database: database,
     checkoutRepository: outboxCheckoutRepository,
   );
-  await synchronizer.drain();
+  // Sem `await`: a primeira tela aparece a partir do estado local, e o
+  // reenvio do outbox acontece em segundo plano. O `unawaited` declara que o
+  // descarte é deliberado, e `drain()` é total — nada escapa dele para virar
+  // erro assíncrono não tratado com a interface já em uso.
+  //
+  // O que torna isto seguro não é o descarte em si, e sim a idempotência
+  // construída na Aula 33. Como a interface sobe antes de o reenvio terminar,
+  // o usuário pode criar um pagamento enquanto o mesmo evento pendente é
+  // reenviado, e as duas requisições saem com a mesma `Idempotency-Key`. O
+  // backend usa essa chave como identificador do documento no Firestore, então
+  // a segunda encontra o existente e devolve o mesmo `id` em vez de cobrar de
+  // novo. Sem essa garantia no servidor, remover o `await` trocaria uma splash
+  // lenta por cobrança duplicada.
+  unawaited(synchronizer.drain());
   Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
 
   runApp(

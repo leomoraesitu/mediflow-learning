@@ -30,9 +30,32 @@ Essa diferença é intencional, não uma inconsistência a corrigir: `checkEligi
 
 Essas duas condições não são garantias arquiteturais permanentes — são o estado atual do projeto. Se um dia o app ganhar sincronização multi-dispositivo (mesma conta, dois aparelhos), esse desenho sobrescreverá dados silenciosamente, sem aviso.
 
-### Limite conhecido e aceito: inicialização bloqueada pelo outbox
+### Limite descoberto na Aula 28 e resolvido na Aula 42: inicialização bloqueada pelo outbox
 
-`main()` chama `await synchronizer.drain()` antes de `runApp()` — a primeira tela do app espera a tentativa de reenvio do outbox resolver (ou falhar) antes de aparecer. Isso contradiz o espírito offline-first (mostrar a UI imediatamente a partir do estado local, sincronizar em segundo plano sem bloquear). Foi assim que o `OutboxSynchronizer` foi conectado nesta sessão de estudo, e a inconsistência foi identificada nesta discussão, não corrigida — decisão explícita de manter o escopo da Aula 28 em discussão, não em implementação.
+> **Resolvido.** `main()` executa `unawaited(synchronizer.drain())`. O relato abaixo permanece porque descreve o problema, e a subseção seguinte registra o que a correção exigiu.
+
+`main()` chamava `await synchronizer.drain()` antes de `runApp()` — a primeira tela do app esperava a tentativa de reenvio do outbox resolver (ou falhar) antes de aparecer. Isso contradiz o espírito offline-first (mostrar a UI imediatamente a partir do estado local, sincronizar em segundo plano sem bloquear). Foi assim que o `OutboxSynchronizer` foi conectado na Aula 28, e a inconsistência foi identificada em discussão, não corrigida — decisão explícita de manter o escopo daquela aula em discussão, não em implementação.
+
+#### O que a correção exigiu, e o que ela mediu
+
+Remover o `await` não é uma edição, é uma mudança de contrato. Com ele, uma falha de `drain()` subia em `main()` antes do `runApp` e derrubava o aplicativo de forma visível. Sem ele, a mesma falha vira **erro assíncrono não tratado**, com a interface já em uso.
+
+Por isso a primeira mudança foi tornar `drain()` total. O `try/catch` do laço, criado na Aula 27, protegia cada evento mas deixava `readPendingOutboxEvents()` de fora. A captura nova é deliberadamente larga e inclui `Error`: o Drift lança `StateError` para banco em estado inválido, que `on Exception` não pegaria. Capturar largo numa fronteira é diferente de capturar largo no meio do código — aqui a alternativa é o erro não tratado. O preço aceito é que um defeito de programação dentro do `drain()` desaparece em silêncio; registrá-lo no Crashlytics fecharia essa lacuna e ficou fora do escopo.
+
+A regra de lint `unawaited_futures` foi ligada no mesmo movimento. Ela não vem no `flutter_lints`, então até então apagar um `await` passava limpo pela análise estática. Na primeira execução ela apontou dois pontos, ambos em teste e ambos legítimos — um deles uma corrida real, em que a asserção lia o snapshot que o `retry()` não-esperado era responsável por gravar.
+
+**A sobreposição que a mudança cria só é segura por causa da Aula 33.** Com a interface no ar antes do reenvio terminar, o usuário pode criar um pagamento enquanto o mesmo evento pendente é reenviado, e as duas requisições saem com a mesma `Idempotency-Key`. O backend usa essa chave como identificador do documento no Firestore, então a segunda encontra o existente e devolve o mesmo `id`. Sem essa garantia no servidor, remover o `await` trocaria uma splash lenta por cobrança duplicada. É uma dependência entre duas aulas distantes que não se reconstrói lendo o código.
+
+A verificação foi por medição, com o mesmo evento pendente restaurado antes de cada partida a frio e rede lenta emulada (EDGE):
+
+| Versão | Medições | Mediana |
+| --- | --- | --- |
+| Com `await` | 7,14 s · 4,08 s · 3,37 s | ~4,1 s |
+| Sem `await` | 2,52 s · 2,42 s · 2,78 s · 2,16 s | ~2,5 s |
+
+O ganho relevante não é a mediana, é a variância: sem `await` a inicialização fica entre 2,2 e 2,8 s; com `await` ela herda a variabilidade da rede e do cold start da function. A inicialização deixou de ser função da rede. O outbox ficou vazio ao final das execuções sem `await`, confirmando que a sincronização aconteceu — apenas não na frente do usuário.
+
+Uma medição contrariou a expectativa e merece registro: **sem rede alguma**, a versão com `await` era rápida e consistente (~1,95 s), porque sem rota a conexão falha imediatamente. O caso caro nunca foi "offline", e sim "rede lenta". Um teste feito apenas em modo avião teria concluído que o `await` não custava nada.
 
 ### Limite descoberto na Aula 35, corrigido em duas etapas: identidade inválida travava o outbox
 
@@ -104,8 +127,8 @@ No caminho, o teste de integração da Aula 37 revelou-se falho pelo oráculo: l
 
 ## Consequências
 
-- O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura, misto na escrita (query vs. command), e bloqueante na inicialização por causa do `drain()`.
+- O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
-- O bloqueio de `main()` no `drain()` é uma dívida técnica reconhecida e registrada aqui deliberadamente, para não ser esquecida nem redescoberta do zero numa aula futura. Corrigi-la (ex.: chamar `drain()` sem `await` antes de `runApp`, deixando-a rodar em segundo plano) fica fora do escopo desta aula.
+- O bloqueio de `main()` no `drain()` foi resolvido na Aula 42, com `unawaited` e um `drain()` total. Em contrapartida, a ausência de sinal ao usuário **piorou de propósito**: antes, uma falha de sincronização acontecia enquanto ele olhava uma tela de abertura; agora acontece enquanto ele usa o aplicativo, e o silêncio é completo. A troca foi aceita conscientemente — latência de inicialização visível a todos, sempre, contra silêncio numa falha rara. Fechar essa lacuna exige estado observável na interface (um indicador de compra pendente) e é trabalho de escopo próprio.
 - A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade nas duas formas: a rejeição pelo servidor (`401`, desde a Aula 36) e a impossibilidade de obter o token (desde a Aula 41). Ela continua **não** valendo se a própria recuperação falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar. Nesse caso o provedor devolve `null`, a requisição sai sem header, o servidor recusa e o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
 - Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real funciona ponta a ponta. Desde a Aula 41 a política tem cobertura de unidade própria, com um fake de `AuthGateway`, e a Aula 37 mantém um teste de integração contra o emulador de Authentication; o que continua sem cobertura é a composição do `main()`. As premissas erradas descritas acima passaram por toda a suíte em seu tempo, e cada uma só apareceu ao rodar contra um ambiente real — duas contra os emuladores, uma contra o Firebase de produção.

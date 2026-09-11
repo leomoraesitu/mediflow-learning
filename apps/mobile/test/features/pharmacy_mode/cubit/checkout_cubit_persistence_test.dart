@@ -155,7 +155,7 @@ void main() {
 
     await cubit.createCheckout();
 
-    cubit.retry();
+    await cubit.retry();
 
     final persistedSnapshot = await storage.load();
 
