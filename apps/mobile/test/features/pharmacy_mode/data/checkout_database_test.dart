@@ -103,4 +103,65 @@ void main() {
 
     expect(entriesRemoved.length, 0);
   });
+  test('collapses repeated pending states into a single emission', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final expectation = expectLater(
+      database.watchHasPendingSync(),
+      emitsInOrder([false, true, false]),
+    );
+
+    await pumpEventQueue();
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: '{"attempt":1}',
+    );
+    await pumpEventQueue();
+
+    // O segundo evento mantém a fila não vazia: o booleano não muda, e o
+    // `distinct` precisa suprimir a emissão. Sem ele, a sequência esperada
+    // teria um `true` a mais e este teste falharia.
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-02',
+      operationType: 'createCheckout',
+      payload: '{"attempt":1}',
+    );
+    await pumpEventQueue();
+
+    await database.removeOutboxEvent('key-01');
+    await pumpEventQueue();
+    await database.removeOutboxEvent('key-02');
+
+    await expectation;
+  });
+
+  test('emits the pending outbox events whenever the queue changes', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final stream = database.watchPendingOutboxEvents();
+
+    final expectation = expectLater(stream, emitsInOrder([isEmpty, hasLength(1), isEmpty]));
+
+    // Os `pumpEventQueue` não são supérfluos: o stream do Drift dispara a
+    // consulta ao ser assinado, mas o resultado chega de forma assíncrona.
+    // Sem ceder o controle entre as mutações, a primeira emissão já vem com o
+    // evento inserido e o estado vazio inicial nunca é observado — que é
+    // justamente a condição de partida da interface, "nada pendente".
+    //
+    // `pumpEventQueue` drena a fila até o repouso, em vez de apostar num
+    // intervalo de relógio como `Future.delayed` faria.
+    await pumpEventQueue();
+    await database.enqueueOutboxEvent(
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: '{"attempt":1}',
+    );
+    await pumpEventQueue();
+    await database.removeOutboxEvent('key-01');
+
+    await expectation;
+  });
 }
