@@ -108,7 +108,9 @@ Os hooks `predeploy` do `firebase.json` executam `npm run lint` e `npm run build
 
 Antes de publicar, vale apagar `lib/` e reconstruir. A lista `ignore` do `firebase.json` exclui `node_modules` e logs, mas **não** exclui `lib/`, que é justamente o que precisa subir. Qualquer arquivo esquecido ali embarca no pacote, e `lib/` está no `.gitignore` — um `lib/index.test.js` órfão de uma compilação antiga não apareceria em nenhum `git diff`.
 
-As dependências **não** sobem. O que é enviado é o código compilado mais o `package.json`, e o build container executa `npm install` no ambiente de produção. Isso resolve pacotes com binários nativos para a arquitetura certa, mas significa que o servidor resolve os ranges `^` do `package.json` no momento do build, e não as versões exatas que os testes locais aprovaram. Não há `package-lock.json` versionado; adicioná-lo fecharia essa fresta.
+As dependências **não** sobem. O que é enviado é o código compilado mais o `package.json` e o `package-lock.json`, e o build container instala no ambiente de produção. Isso resolve pacotes com binários nativos para a arquitetura certa — subir `node_modules` da máquina de desenvolvimento mandaria binários de macOS ARM para rodar em Linux x86.
+
+O lockfile é o que torna esse build reprodutível: sem ele, o servidor resolveria os ranges `^` no momento da instalação e poderia receber versões diferentes das que os testes aprovaram. Ele está versionado desde a Aula 33 e a lista `ignore` do `firebase.json` não o exclui, então ele acompanha o pacote. Mantê-lo sincronizado com o `package.json` é parte de qualquer mudança de dependência.
 
 A URL da function publicada é `https://us-central1-mediflow-learning.cloudfunctions.net/api`.
 
