@@ -6,6 +6,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_checkout_
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_medication_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_prescription_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_sync_scheduler.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_checkout_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_medication_repository.dart';
@@ -27,6 +28,7 @@ final class AppDependencies {
   final OutboxSynchronizer synchronizer;
   final OperationalSettings settings;
   final Stream<bool> hasPendingSync;
+  final OutboxSyncScheduler scheduler;
 
   const AppDependencies({
     required this.database,
@@ -36,6 +38,7 @@ final class AppDependencies {
     required this.synchronizer,
     required this.settings,
     required this.hasPendingSync,
+    required this.scheduler,
   });
 }
 
@@ -53,10 +56,25 @@ AppDependencies composeDependencies({
   required CheckoutApiClient apiClient,
   required OperationalSettings settings,
   required PerformanceTracer tracer,
+  required Stream<void> syncTriggers,
 }) {
   final outboxCheckoutRepository = OutboxCheckoutRepository(
     inner: DioCheckoutRepository(apiClient: apiClient),
     database: database,
+  );
+
+  // Uma instância só, compartilhada entre o grafo e o agendador — e isso é
+  // requisito, não estilo. A proteção contra reenvio duplicado vive em campos
+  // de instância do sincronizador, então dois objetos teriam sinais
+  // independentes e voltariam a poder drenar em paralelo. Construir um
+  // `OutboxSynchronizer` novo aqui embaixo compilaria e desfaria a Etapa 2.
+  //
+  // O sincronizador recebe o repositório **sem** o decorator de performance:
+  // o reenvio do outbox não é uma ação do usuário, e medi-lo junto das
+  // criações reais misturaria duas populações no mesmo trace.
+  final synchronizer = OutboxSynchronizer(
+    database: database,
+    checkoutRepository: outboxCheckoutRepository,
   );
 
   return AppDependencies(
@@ -73,14 +91,9 @@ AppDependencies composeDependencies({
       inner: DioMedicationRepository(apiClient: apiClient),
       tracer: tracer,
     ),
-    // O sincronizador recebe o repositório **sem** o decorator de
-    // performance: o reenvio do outbox não é uma ação do usuário, e medi-lo
-    // junto das criações reais misturaria duas populações no mesmo trace.
-    synchronizer: OutboxSynchronizer(
-      database: database,
-      checkoutRepository: outboxCheckoutRepository,
-    ),
+    synchronizer: synchronizer,
     settings: settings,
     hasPendingSync: database.watchHasPendingSync(),
+    scheduler: OutboxSyncScheduler(syncTriggers, drain: synchronizer.drain),
   );
 }
