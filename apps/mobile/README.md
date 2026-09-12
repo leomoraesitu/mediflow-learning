@@ -264,7 +264,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 102 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox e o indicador de compra pendente — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 105 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox, o indicador de compra pendente e a montagem do grafo de dependências — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
@@ -280,7 +280,23 @@ flutter test integration_test/identity_recovery_test.dart -d <device-id>
 
 ### Limite conhecido
 
-**Nada cobre a composição do `main()`.** Os testes de widget constroem `MainApp` diretamente, com repositórios de demonstração, então a ligação real entre `Dio*Repository`, outbox e decorators de performance não é exercitada. Foi exatamente ali que a Aula 34 introduziu e corrigiu seu erro mais grave, com o outbox acidentalmente removido do caminho do app enquanto análise e testes seguiam verdes. O teste de integração da Aula 37 reduziu essa lacuna em um ponto específico, a política de identidade, mas a composição como um todo continua sendo validada manualmente contra os emuladores.
+**A composição do `main()` é coberta em parte, e vale saber qual parte.** A Aula 44 extraiu a montagem do grafo para `composeDependencies`, em `lib/app_dependencies.dart`. Ela recebe as quatro peças de plataforma — banco, cliente HTTP, configurações e tracer — em vez de construí-las, e é síncrona e sem efeitos colaterais. É isso, e não o arquivo em que mora, que a torna testável: o `main()` passa o banco real e um cliente com rede; o teste passa um banco em memória e um `CheckoutApiClient.withDio` sobre um adapter falso.
+
+`test/app_dependencies_test.dart` cobre três ligações, cada uma validada por quebra dirigida com atribuição conferida:
+
+| Ligação | Quebra que a derruba |
+| --- | --- |
+| A criação de checkout passa pelo outbox | trocar o `inner` do decorator pelo repositório Dio cru |
+| `hasPendingSync` vem do banco recebido | devolver `const Stream<bool>.empty()` |
+| O sincronizador recebe o repositório sem o decorator de performance | envolvê-lo no decorator |
+
+A primeira é **literalmente o erro da Aula 34**, quando o outbox saiu do caminho do aplicativo e 82 testes seguiram verdes. Hoje ela custa um teste vermelho com nome explicável.
+
+O teste do outbox faz o adapter responder erro de propósito. Numa criação bem-sucedida o evento é enfileirado e removido, e a tabela termina vazia — indistinguível de uma cadeia montada **sem** outbox. Falhando, o evento permanece, e só há evento se o outbox estiver no caminho.
+
+O que destravou isso foi o `PerformanceTracer`, em `lib/observability/`. Enquanto os três decorators dependessem de `FirebasePerformance` — classe concreta do plugin, sem substituto em teste —, nenhuma composição podia ser montada fora de um dispositivo. A interface colapsa `newTrace`/`start`/`stop` numa operação, o que também eliminou o `try/finally` repetido nos três. É a mesma costura de `AuthGateway`, na Aula 41.
+
+**O que continua sem cobertura:** os decorators de performance envolvendo os repositórios certos; a ligação do `tokenProvider` ao `FirebaseAuthGateway`, que ficou no `main()` como consequência de o cliente HTTP entrar por parâmetro; e o bootstrap de plataforma — binding, Firebase, emulador, login anônimo e Remote Config —, que não deve ser testado aqui. O teste de integração da Aula 37 cobre a política de identidade contra o emulador de Authentication.
 
 ## Referências oficiais
 

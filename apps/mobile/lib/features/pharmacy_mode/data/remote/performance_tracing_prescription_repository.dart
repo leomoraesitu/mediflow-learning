@@ -1,24 +1,14 @@
 import 'package:checkout_domain/checkout_domain.dart';
-import 'package:firebase_performance/firebase_performance.dart';
+import 'package:mediflow_mobile/observability/performance_tracer.dart';
 
 final class PerformanceTracingPrescriptionRepository implements PrescriptionRepository {
   final PrescriptionRepository _inner;
-  final FirebasePerformance _performance;
+  final PerformanceTracer _tracer;
 
-  const PerformanceTracingPrescriptionRepository({
-    required this._inner,
-    required this._performance,
-  });
+  const PerformanceTracingPrescriptionRepository({required this._inner, required this._tracer});
 
   @override
   Future<bool> validate(Prescription prescription) async {
-    final trace = _performance.newTrace('prescription_validate');
-    await trace.start();
-
-    try {
-      return await _inner.validate(prescription);
-    } finally {
-      await trace.stop();
-    }
+    return _tracer.trace('prescription_validate', () => _inner.validate(prescription));
   }
 }

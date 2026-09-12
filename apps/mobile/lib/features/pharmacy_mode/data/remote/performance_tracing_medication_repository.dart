@@ -1,21 +1,14 @@
 import 'package:checkout_domain/checkout_domain.dart';
-import 'package:firebase_performance/firebase_performance.dart';
+import 'package:mediflow_mobile/observability/performance_tracer.dart';
 
 final class PerformanceTracingMedicationRepository implements MedicationRepository {
   final MedicationRepository _inner;
-  final FirebasePerformance _performance;
+  final PerformanceTracer _tracer;
 
-  const PerformanceTracingMedicationRepository({required this._inner, required this._performance});
+  const PerformanceTracingMedicationRepository({required this._inner, required this._tracer});
 
   @override
   Future<bool> checkEligibility(Medication medication) async {
-    final trace = _performance.newTrace('medication_check_eligibility');
-    await trace.start();
-
-    try {
-      return await _inner.checkEligibility(medication);
-    } finally {
-      await trace.stop();
-    }
+    return _tracer.trace('medication_check_eligibility', () => _inner.checkEligibility(medication));
   }
 }

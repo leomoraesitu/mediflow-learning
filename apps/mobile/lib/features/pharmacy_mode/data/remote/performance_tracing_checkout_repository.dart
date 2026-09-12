@@ -1,22 +1,15 @@
 import 'package:checkout_domain/checkout_domain.dart';
-import 'package:firebase_performance/firebase_performance.dart';
+import 'package:mediflow_mobile/observability/performance_tracer.dart';
 
 final class PerformanceTracingCheckoutRepository implements CheckoutRepository {
   final CheckoutRepository _inner;
-  final FirebasePerformance _performance;
+  final PerformanceTracer _tracer;
 
-  const PerformanceTracingCheckoutRepository({required this._inner, required this._performance});
+  const PerformanceTracingCheckoutRepository({required this._inner, required this._tracer});
 
   @override
   Future<String> create(CheckoutSession session) async {
-    final trace = _performance.newTrace('checkout_create');
-    await trace.start();
-
-    try {
-      return await _inner.create(session);
-    } finally {
-      await trace.stop();
-    }
+    return _tracer.trace('checkout_create', () => _inner.create(session));
   }
 
   @override
