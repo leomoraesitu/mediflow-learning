@@ -29,6 +29,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_t
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_medication_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_prescription_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/firebase_options.dart';
 import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
@@ -118,6 +119,7 @@ void main() async {
       prescriptionRepository: performanceTracingPrescriptionRepository,
       medicationRepository: performanceTracingMedicationRepository,
       settings: settings,
+      hasPendingSync: database.watchHasPendingSync(),
     ),
   );
 }
@@ -128,6 +130,7 @@ class MainApp extends StatelessWidget {
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
+  final Stream<bool> hasPendingSync;
 
   const MainApp({
     super.key,
@@ -136,6 +139,7 @@ class MainApp extends StatelessWidget {
     required this.prescriptionRepository,
     required this.medicationRepository,
     required this.settings,
+    this.hasPendingSync = const Stream<bool>.empty(),
   });
 
   @override
@@ -148,6 +152,7 @@ class MainApp extends StatelessWidget {
         checkoutRepository: checkoutRepository,
         prescriptionRepository: prescriptionRepository,
         medicationRepository: medicationRepository,
+        hasPendingSync: hasPendingSync,
       ),
       theme: AppTheme.light,
     );
@@ -161,6 +166,7 @@ class BenefitsHomePage extends StatelessWidget {
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
+  final Stream<bool> hasPendingSync;
 
   const BenefitsHomePage({
     super.key,
@@ -170,6 +176,7 @@ class BenefitsHomePage extends StatelessWidget {
     required this.prescriptionRepository,
     required this.medicationRepository,
     required this.settings,
+    this.hasPendingSync = const Stream<bool>.empty(),
   });
 
   void _openPharmacyMode(BuildContext context) {
@@ -215,51 +222,64 @@ class BenefitsHomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('MediFlow')),
       body: SafeArea(
-        child: MediFlowContentCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 48, color: colorScheme.primary),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Saldo disponível',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'R\$ $formattedBalance',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+        child: Column(
+          children: [
+            PendingSyncIndicator(hasPendingSync: hasPendingSync),
+            Expanded(
+              child: MediFlowContentCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 48,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Saldo disponível',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'R\$ $formattedBalance',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'Benefício fictício para esta demonstração.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    Column(
+                      children: [
+                        if (settings.maintenanceMode)
+                          Text(settings.maintenanceMessage, textAlign: TextAlign.center),
+                        const SizedBox(height: AppSpacing.md),
+
+                        ElevatedButton(
+                          onPressed: settings.maintenanceMode
+                              ? null
+                              : () {
+                                  _openPharmacyMode(context);
+                                },
+                          child: const Text('Iniciar Modo Farmácia'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Benefício fictício para esta demonstração.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              Column(
-                children: [
-                  if (settings.maintenanceMode)
-                    Text(settings.maintenanceMessage, textAlign: TextAlign.center),
-                  const SizedBox(height: AppSpacing.md),
-
-                  ElevatedButton(
-                    onPressed: settings.maintenanceMode
-                        ? null
-                        : () {
-                            _openPharmacyMode(context);
-                          },
-                    child: const Text('Iniciar Modo Farmácia'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

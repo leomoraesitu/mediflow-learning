@@ -86,6 +86,23 @@ final class CheckoutDatabase extends _$CheckoutDatabase {
     )..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)])).get();
   }
 
+  Stream<List<OutboxEvent>> watchPendingOutboxEvents() {
+    return (select(
+      outboxEvents,
+    )..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)])).watch();
+  }
+
+  /// Emite se existe alguma compra registrada no outbox e ainda não
+  /// confirmada pelo servidor.
+  ///
+  /// O `distinct` não é cosmético: `watchPendingOutboxEvents` reemite a cada
+  /// mudança na tabela, e várias dessas mudanças produzem o mesmo booleano —
+  /// dois eventos enfileirados em sequência dariam `true` duas vezes, e cada
+  /// emissão reconstruiria a interface sem nada ter mudado para ela.
+  Stream<bool> watchHasPendingSync() {
+    return watchPendingOutboxEvents().map((events) => events.isNotEmpty).distinct();
+  }
+
   Future<void> removeOutboxEvent(String idempotencyKey) async {
     await (delete(
       outboxEvents,

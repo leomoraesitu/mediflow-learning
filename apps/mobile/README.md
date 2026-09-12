@@ -192,6 +192,20 @@ A sobreposição criada pela mudança — usuário criando um pagamento enquanto
 
 A verificação foi por medição, com rede lenta emulada e o mesmo evento pendente restaurado antes de cada partida a frio: mediana de ~4,1 s com `await` contra ~2,5 s sem, e — o que mais importa — variância apertada (2,2 a 2,8 s) em vez de dependente da rede (3,4 a 7,1 s). Os números completos estão na ADR 0001.
 
+### O indicador de compra pendente (Aula 43)
+
+A Aula 42 tirou a sincronização da frente do usuário e, com isso, deixou a falha completamente silenciosa. O indicador fecha essa lacuna pelo lado da leitura.
+
+`CheckoutDatabase.watchHasPendingSync()` deriva um `Stream<bool>` da consulta do outbox — é o primeiro `Stream` do aplicativo, que até aqui lia dados apenas por `Future`. `PendingSyncIndicator`, na tela inicial, o consome com `StreamBuilder` e some sozinho quando a fila esvazia.
+
+O widget recebe `Stream<bool>`, nunca o stream do Drift: `OutboxEvent` é classe gerada pela persistência, e entregá-la à interface repetiria o vazamento que a Aula 41 corrigiu na autenticação. A derivação com `map` e `distinct` vive no banco, e não no `main()`, porque as linhas de composição não são cobertas por teste algum — lá, remover o `distinct` passaria despercebido; no banco, derruba um teste.
+
+O indicador também não vive no `CheckoutCubit`: o Cubit dura uma sessão de checkout, o outbox guarda intenções de execuções anteriores, e o aviso precisa aparecer na tela inicial, onde não há Cubit.
+
+Dois detalhes que a escrita dos testes ensinou. O stream do Drift dispara a consulta ao ser assinado, mas entrega o resultado de forma assíncrona — mutar a tabela em seguida faz a primeira emissão já vir com a mudança, e o estado inicial nunca é observado; `pumpEventQueue` resolve sem apostar num intervalo de relógio, como `Future.delayed` faria. E um caso que emite o mesmo valor do estado inicial não pode falhar: `starts hidden before the stream emits` não emite nada, porque o que está sob teste é o `initialData`.
+
+A verificação foi manual, contra as functions em produção: com evento pendente e sem rede, o aviso aparece e permanece; com rede lenta, aparece na abertura e desaparece **na mesma sessão**, sem navegação nem reinício. Nessa verificação apareceu um limite que era invisível até então — o `drain()` roda uma vez, na inicialização, então religar a rede com o aplicativo aberto não faz o aviso sumir. Está registrado na ADR 0001.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -250,7 +264,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 96 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido e a tolerância do `drain()` a uma falha de leitura do outbox — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 102 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox e o indicador de compra pendente — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
