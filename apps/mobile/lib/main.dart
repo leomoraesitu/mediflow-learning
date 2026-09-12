@@ -9,6 +9,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mediflow_mobile/app_dependencies.dart';
 import 'package:mediflow_mobile/config/firebase_auth_gateway.dart';
 import 'package:mediflow_mobile/config/firebase_auth_token_provider.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
@@ -18,24 +19,17 @@ import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_checkout_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_medication_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/dio_prescription_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_checkout_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_medication_repository.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/performance_tracing_prescription_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/firebase_options.dart';
+import 'package:mediflow_mobile/observability/firebase_performance_tracer.dart';
 import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
-void main() async {
+Future<void> main() async {
   if (checkoutApiBaseUrl.isEmpty) {
     throw StateError(
       'CHECKOUT_API_BASE_URL não foi informado. Execute com: '
@@ -62,40 +56,25 @@ void main() async {
     print('Falha ao autenticar anonimamente: ${e.message}. Seguindo sem usuário autenticado.');
   }
 
-  final database = CheckoutDatabase.defaults();
-
   final settings = await RemoteConfigOperationalSettings.load(FirebaseRemoteConfig.instance);
 
-  final apiClient = CheckoutApiClient(
-    baseUrl: checkoutApiBaseUrl,
-    timeout: settings.checkoutTimeout,
-    tokenProvider: FirebaseAuthTokenProvider(
-      FirebaseAuthGateway(firebaseAuth: FirebaseAuth.instance),
-    ).token,
+  // Daqui para baixo nada mais depende de plataforma: a montagem do grafo é
+  // uma função pura sobre estas quatro peças, e é isso que a torna testável.
+  final dependencies = composeDependencies(
+    database: CheckoutDatabase.defaults(),
+    apiClient: CheckoutApiClient(
+      baseUrl: checkoutApiBaseUrl,
+      timeout: settings.checkoutTimeout,
+      tokenProvider: FirebaseAuthTokenProvider(
+        FirebaseAuthGateway(firebaseAuth: FirebaseAuth.instance),
+      ).token,
+    ),
+    settings: settings,
+    tracer: FirebasePerformanceTracer(performance: FirebasePerformance.instance),
   );
 
-  final outboxCheckoutRepository = OutboxCheckoutRepository(
-    inner: DioCheckoutRepository(apiClient: apiClient),
-    database: database,
-  );
-
-  final performanceTracingPrescriptionRepository = PerformanceTracingPrescriptionRepository(
-    inner: DioPrescriptionRepository(apiClient: apiClient),
-    performance: FirebasePerformance.instance,
-  );
-  final performanceTracingMedicationRepository = PerformanceTracingMedicationRepository(
-    inner: DioMedicationRepository(apiClient: apiClient),
-    performance: FirebasePerformance.instance,
-  );
-  final performanceTracingCheckoutRepository = PerformanceTracingCheckoutRepository(
-    inner: outboxCheckoutRepository,
-    performance: FirebasePerformance.instance,
-  );
-
-  final synchronizer = OutboxSynchronizer(
-    database: database,
-    checkoutRepository: outboxCheckoutRepository,
-  );
+  // As duas ações que a composição deliberadamente não faz.
+  //
   // Sem `await`: a primeira tela aparece a partir do estado local, e o
   // reenvio do outbox acontece em segundo plano. O `unawaited` declara que o
   // descarte é deliberado, e `drain()` é total — nada escapa dele para virar
@@ -109,17 +88,17 @@ void main() async {
   // a segunda encontra o existente e devolve o mesmo `id` em vez de cobrar de
   // novo. Sem essa garantia no servidor, remover o `await` trocaria uma splash
   // lenta por cobrança duplicada.
-  unawaited(synchronizer.drain());
+  unawaited(dependencies.synchronizer.drain());
   Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
 
   runApp(
     MainApp(
-      database: database,
-      checkoutRepository: performanceTracingCheckoutRepository,
-      prescriptionRepository: performanceTracingPrescriptionRepository,
-      medicationRepository: performanceTracingMedicationRepository,
-      settings: settings,
-      hasPendingSync: database.watchHasPendingSync(),
+      database: dependencies.database,
+      checkoutRepository: dependencies.checkoutRepository,
+      prescriptionRepository: dependencies.prescriptionRepository,
+      medicationRepository: dependencies.medicationRepository,
+      settings: dependencies.settings,
+      hasPendingSync: dependencies.hasPendingSync,
     ),
   );
 }
