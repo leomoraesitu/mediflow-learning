@@ -8,9 +8,56 @@ final class OutboxSynchronizer {
   final CheckoutDatabase _database;
   final CheckoutRepository _checkoutRepository;
 
-  const OutboxSynchronizer({required this._database, required this._checkoutRepository});
+  /// Há uma drenagem em andamento.
+  bool _draining = false;
 
+  /// Alguém pediu uma drenagem enquanto outra corria.
+  bool _requestedAgain = false;
+
+  // Sem `const`: guardar estado custa o construtor constante. A proteção só
+  // vale para chamadas na *mesma instância* — duas instâncias teriam sinais
+  // independentes, e é por isso que o grafo monta uma só, em
+  // `composeDependencies`.
+  OutboxSynchronizer({required this._database, required this._checkoutRepository});
+
+  /// Reenvia o outbox, garantindo que apenas uma drenagem corra por vez.
+  ///
+  /// Até a Aula 44 havia um único gatilho — a inicialização —, e a
+  /// reentrância era impossível por construção. Com conectividade e ciclo de
+  /// vida, dois gatilhos podem chegar com milissegundos de diferença: as duas
+  /// drenagens leem a mesma fila e reenviam os mesmos eventos. O servidor
+  /// sobrevive graças à idempotência da Aula 33, mas o aparelho gasta o dobro
+  /// de requisições.
+  ///
+  /// Um pedido que chega durante uma drenagem não é descartado: ele é
+  /// **marcado**, e uma passada nova acontece ao final. Descartar seria
+  /// perder justamente o sinal mais valioso — a rede que volta no meio de uma
+  /// drenagem travada em timeout é a que teria sucesso.
   Future<void> drain() async {
+    if (_draining) {
+      _requestedAgain = true;
+      return;
+    }
+
+    _draining = true;
+    try {
+      do {
+        // Zerado antes da passada: pedidos que chegarem durante *esta*
+        // execução precisam provocar a próxima, e não serem consumidos por
+        // ela.
+        _requestedAgain = false;
+        await _drainOnce();
+      } while (_requestedAgain);
+    } finally {
+      // Obrigatório: sem ele, uma exceção que escapasse deixaria o sinal
+      // preso em `true` e o sincronizador nunca mais drenaria. `_drainOnce`
+      // é total hoje, mas "não deveria lançar" já caiu como premissa neste
+      // projeto antes.
+      _draining = false;
+    }
+  }
+
+  Future<void> _drainOnce() async {
     late final List<OutboxEvent> pendingEvents;
     try {
       pendingEvents = await _database.readPendingOutboxEvents();

@@ -137,14 +137,34 @@ A Aula 42 tirou a sincronização da frente do usuário e, no mesmo movimento, t
 
 **Ele não distingue "pendente" de "sincronizando".** Depois da Aula 42, um evento na fila pode estar sendo reenviado naquele instante. Distinguir exigiria o `OutboxSynchronizer` publicar o próprio estado; a mensagem atual é verdadeira nos dois casos, e a simplificação foi aceita.
 
-**O limite que a verificação manual revelou:** o aviso só desaparece quando o `drain()` conclui, e o `drain()` roda **uma vez, na inicialização**. Com o aplicativo aberto e a rede voltando, o indicador permanece até o próximo lançamento. Isso vem do desenho do outbox da Aula 27 e não é regressão — mas até agora era invisível, e o indicador o tornou observável. Fechá-lo exigiria disparar a sincronização por mudança de conectividade, o que é trabalho de escopo próprio.
+**O limite que a verificação manual revelou, e que a Aula 45 fechou:** o aviso só desaparece quando o `drain()` conclui, e até então o `drain()` rodava **uma vez, na inicialização**. Com o aplicativo aberto e a rede voltando, o indicador permanecia até o próximo lançamento. Isso vinha do desenho do outbox da Aula 27, não era regressão, e era invisível até o indicador torná-lo observável. A seção seguinte descreve como foi fechado.
 
 A verificação foi manual, no emulador, contra as functions em produção: com um evento pendente e sem rede, o aviso aparece e permanece; com rede lenta, ele aparece na abertura e **desaparece sozinho na mesma sessão**, sem navegação nem reinício, quando o reenvio conclui. É a única prova de que o `watch()` está ligado de ponta a ponta.
+
+### A sincronização deixou de depender da inicialização (Aula 45)
+
+Três gatilhos passaram a existir onde havia um: a inicialização, a volta da conectividade e — em aula futura — a retomada do aplicativo. A mudança de fundo não é o gatilho novo, é o que ele obrigou a construir antes dele.
+
+**Reentrância.** `OutboxSynchronizer` era `const` e sem estado, e isso era seguro apenas porque havia uma única chamada. Com dois gatilhos podendo chegar com milissegundos de diferença, duas drenagens leem a mesma fila e reenviam os mesmos eventos: o servidor sobrevive pela idempotência da Aula 33, mas o aparelho gasta o dobro de requisições.
+
+A estratégia escolhida **não** foi ignorar a segunda chamada. Ignorar descarta justamente o sinal mais valioso — a rede que volta no meio de uma drenagem travada em timeout é a que teria sucesso, e a janela em rede instável vai de 8 a 25 segundos, que é exatamente quando o usuário está mexendo no wi-fi. Um pedido que chega durante uma drenagem é **marcado**, e uma passada nova acontece ao final.
+
+O `finally` que libera o sinal é obrigatório, e essa afirmação só virou garantia quando um teste passou a cobri-la: o caso que a guarda não é o exótico, é o comum — duas drenagens separadas no tempo, que é o que cada gatilho produz na vida real.
+
+**A instância precisa ser única.** A proteção vive em campos de instância, então dois `OutboxSynchronizer` teriam sinais independentes e voltariam a drenar em paralelo. Construir um segundo em `composeDependencies` compila e passa em quase tudo; o que o pega é um teste de composição que conta requisições com uma sobreposição deliberada entre a drenagem de inicialização e um gatilho.
+
+**Conectividade não é conexão.** `connectivity_plus` informa que existe interface de rede ativa, não que a internet responde — um wi-fi com portal cativo reporta conectado. O gatilho é uma dica para tentar, e quem lida com a falha continua sendo a retentativa da Aula 39.
+
+O adaptador colapsa emissões repetidas pelo **conjunto de interfaces**, e não por "há rede?". A diferença importa: uma troca de wi-fi para dados móveis mantém o booleano em `true`, e colapsá-la perderia o gatilho do usuário que abandona uma rede quebrada pelo 4G. No caminho apareceu uma armadilha do Dart — listas comparam por identidade, então `distinct()` sem comparador não colapsaria nada e o filtro pareceria existir sem existir.
+
+**Construir e iniciar são separados.** `OutboxSyncScheduler` recebe o stream e a função de drenagem, mas só assina quando alguém chama `start()`. É isso que mantém `composeDependencies` pura, como a Aula 44 estabeleceu: a composição monta o agendador, o `main()` o inicia, ao lado do `unawaited(drain())` e do `BlocObserver`.
+
+A verificação foi manual, contra as functions em produção: aplicativo em primeiro plano, sem rede, com o indicador visível; a rede foi religada sem nenhum toque no aparelho; cerca de catorze segundos depois o outbox esvaziou e o aviso desapareceu sozinho.
 
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
-- O bloqueio de `main()` no `drain()` foi resolvido na Aula 42, com `unawaited` e um `drain()` total. O silêncio que isso agravou foi endereçado na Aula 43, com o indicador de compra pendente na tela inicial — ver a seção abaixo, incluindo o que ele **não** cobre.
+- O bloqueio de `main()` no `drain()` foi resolvido na Aula 42, com `unawaited` e um `drain()` total. O silêncio que isso agravou foi endereçado na Aula 43, com o indicador de compra pendente, e a dependência da inicialização caiu na Aula 45, com o gatilho de conectividade e a proteção de reentrância que ele exigiu. Continua fora: a retomada do aplicativo como gatilho, que é a rede de segurança para mudanças de conectividade não entregues em segundo plano.
 - A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade nas duas formas: a rejeição pelo servidor (`401`, desde a Aula 36) e a impossibilidade de obter o token (desde a Aula 41). Ela continua **não** valendo se a própria recuperação falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar. Nesse caso o provedor devolve `null`, a requisição sai sem header, o servidor recusa e o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
 - Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real funciona ponta a ponta. Desde a Aula 41 a política tem cobertura de unidade própria, com um fake de `AuthGateway`, e a Aula 37 mantém um teste de integração contra o emulador de Authentication; o que continua sem cobertura é a composição do `main()`. As premissas erradas descritas acima passaram por toda a suíte em seu tempo, e cada uma só apareceu ao rodar contra um ambiente real — duas contra os emuladores, uma contra o Firebase de produção.

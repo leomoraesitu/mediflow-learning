@@ -14,13 +14,14 @@ import 'package:mediflow_mobile/config/firebase_auth_gateway.dart';
 import 'package:mediflow_mobile/config/firebase_auth_token_provider.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/config/remote_config_operational_settings.dart';
+import 'package:mediflow_mobile/connectivity/connectivity_sync_triggers.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_session_storage.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/firebase_options.dart';
@@ -71,6 +72,7 @@ Future<void> main() async {
     ),
     settings: settings,
     tracer: FirebasePerformanceTracer(performance: FirebasePerformance.instance),
+    syncTriggers: ConnectivitySyncTriggers.defaults().stream,
   );
 
   // As duas ações que a composição deliberadamente não faz.
@@ -89,6 +91,7 @@ Future<void> main() async {
   // novo. Sem essa garantia no servidor, remover o `await` trocaria uma splash
   // lenta por cobrança duplicada.
   unawaited(dependencies.synchronizer.drain());
+  dependencies.scheduler.start();
   Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
 
   runApp(

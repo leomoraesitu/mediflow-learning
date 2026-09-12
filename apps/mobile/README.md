@@ -206,6 +206,26 @@ Dois detalhes que a escrita dos testes ensinou. O stream do Drift dispara a cons
 
 A verificação foi manual, contra as functions em produção: com evento pendente e sem rede, o aviso aparece e permanece; com rede lenta, aparece na abertura e desaparece **na mesma sessão**, sem navegação nem reinício. Nessa verificação apareceu um limite que era invisível até então — o `drain()` roda uma vez, na inicialização, então religar a rede com o aplicativo aberto não faz o aviso sumir. Está registrado na ADR 0001.
 
+### Reenvio quando a conectividade volta (Aula 45)
+
+Até aqui o `drain()` rodava uma vez, na inicialização. A Aula 43 tornou isso visível: com o aplicativo aberto e a rede voltando, o indicador ficava na tela até o usuário reabrir. Agora a volta da rede é um gatilho.
+
+O conteúdo da aula, porém, não é o gatilho — é o que ele obrigou a construir antes.
+
+**Reentrância.** `OutboxSynchronizer` era `const` e sem estado, seguro apenas porque havia uma única chamada. Dois gatilhos simultâneos fazem duas drenagens lerem a mesma fila e reenviarem os mesmos eventos; o servidor sobrevive pela idempotência da Aula 33, o aparelho gasta o dobro de requisições.
+
+Um pedido que chega durante uma drenagem é **marcado**, e uma passada nova acontece ao final — em vez de ser ignorado. Ignorar descartaria o sinal mais valioso: a rede que volta no meio de uma drenagem travada em timeout é a que teria sucesso, e a janela em rede instável vai de 8 a 25 segundos, que é justamente quando o usuário mexe no wi-fi.
+
+**A instância precisa ser única**, porque a proteção vive em campos de instância. Construir um segundo `OutboxSynchronizer` em `composeDependencies` compila e passa em quase tudo — o que o pega é `sends each event once when a trigger overlaps the startup drain`, que conta requisições com uma sobreposição deliberada.
+
+**Construir e iniciar são separados.** `OutboxSyncScheduler` recebe o stream de gatilhos e a função de drenagem, e só assina no `start()`. É o que mantém `composeDependencies` pura, como a Aula 44 estabeleceu; o `main()` inicia, ao lado do `unawaited(drain())`.
+
+**`ConnectivitySyncTriggers`** é o único arquivo do aplicativo que importa `connectivity_plus`, e traduz `List<ConnectivityResult>` em `Stream<void>`. Ele colapsa repetições pelo **conjunto de interfaces**, não por "há rede?": uma troca de wi-fi para dados móveis mantém o booleano em `true`, e colapsá-la perderia o gatilho de quem abandona uma rede quebrada pelo 4G. Cuidado com a armadilha que isso revelou — listas em Dart comparam por identidade, então `distinct()` sem comparador não colapsa nada e o filtro parece existir sem existir.
+
+Conectividade não é conexão: um wi-fi com portal cativo reporta conectado. O gatilho é uma dica para tentar, e quem lida com a falha continua sendo a retentativa da Aula 39.
+
+Verificado manualmente contra as functions em produção: aplicativo em primeiro plano, sem rede, indicador visível; rede religada sem nenhum toque no aparelho; cerca de catorze segundos depois o outbox esvaziou e o aviso sumiu sozinho.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -264,7 +284,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 105 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox, o indicador de compra pendente e a montagem do grafo de dependências — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 117 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox, o indicador de compra pendente a montagem do grafo de dependências, a proteção contra drenagens concorrentes, o agendador de sincronização e a tradução de conectividade em gatilhos — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
