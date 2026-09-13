@@ -161,10 +161,28 @@ O adaptador colapsa emissões repetidas pelo **conjunto de interfaces**, e não 
 
 A verificação foi manual, contra as functions em produção: aplicativo em primeiro plano, sem rede, com o indicador visível; a rede foi religada sem nenhum toque no aparelho; cerca de catorze segundos depois o outbox esvaziou e o aviso desapareceu sozinho.
 
+### A retomada como terceira fonte, e o que a medição mostrou (Aula 46)
+
+`LifecycleSyncTriggers` embrulha `AppLifecycleListener` e emite em `onResume`. A composição passou a receber `Iterable<Stream<void>>` e funde as fontes com `StreamGroup.merge`, que é preguiçoso — só assina quando alguém assina o resultado, e por isso montar o grafo continua sem efeito colateral.
+
+Fundir na composição, e não no `main()`, é o que torna a fusão verificável: um teste passa dois controllers e afirma, **entre** as emissões, que cada fonte sozinha dispara a drenagem. Contar requisições em vez de checar a fila vazia é o que fecha o buraco — com só a segunda fonte ligada, a drenagem tardia pegaria os dois eventos de uma vez e a fila esvaziaria mesmo com metade da fusão quebrada.
+
+Duas decisões merecem registro.
+
+**Toda retomada dispara, sem filtrar.** `AppLifecycleState.resumed` também acontece ao fechar um diálogo do sistema ou uma tela de permissão. Filtrar por "veio de `paused`" seria possível, mas em algumas plataformas diálogos passam por `hidden` e a regra fica frágil. Com a fila vazia, uma drenagem extra é uma leitura de banco; com fila cheia, é uma retentativa — que é o comportamento desejado. A reentrância da Aula 45 protege contra sobreposição.
+
+**O Flutter valida transições de ciclo de vida.** `resumed` só pode vir de `inactive` ou `detached`, então um teste que salte de `paused` direto para `resumed` dispara asserção — e a falha aparece como "não emitiu", que é o sintoma, não a causa. O caminho válido no Android passa por `inactive` e `hidden` nos dois sentidos.
+
+**O que a verificação manual mediu, e corrige uma suposição.** Com as duas fontes ativas, a fila esvaziou com o aplicativo em **segundo plano**, antes de ser trazido de volta: neste emulador o Android entregou a mudança de conectividade ao processo em background, e o gatilho da Aula 45 bastou. A retomada não chegou a ser exercitada.
+
+Só um build temporário contendo apenas a fonte de ciclo de vida isolou o comportamento: com a rede religada em segundo plano, a fila permaneceu em quatro verificações consecutivas; a retomada a esvaziou, com o Android confirmando `its current task has been brought to the front` — mesmo processo, sem relançamento.
+
+Portanto, **nas condições reproduzíveis aqui a retomada é redundante**. Ela existe para o que o emulador não reproduz: Doze, restrições agressivas de fabricante e permanência longa em segundo plano, onde a entrega do aviso de conectividade não é prometida. É rede de segurança, não caminho principal.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.
 - A ausência de versionamento/resolução de conflitos é uma dívida técnica latente, não visível hoje porque nenhuma das condições que a exporiam (multi-escritor, multi-dispositivo) existe no projeto atual. Qualquer trabalho futuro de sincronização multi-dispositivo precisa revisitar este ADR antes de reutilizar `insertOnConflictUpdate` como está.
-- O bloqueio de `main()` no `drain()` foi resolvido na Aula 42, com `unawaited` e um `drain()` total. O silêncio que isso agravou foi endereçado na Aula 43, com o indicador de compra pendente, e a dependência da inicialização caiu na Aula 45, com o gatilho de conectividade e a proteção de reentrância que ele exigiu. Continua fora: a retomada do aplicativo como gatilho, que é a rede de segurança para mudanças de conectividade não entregues em segundo plano.
+- O bloqueio de `main()` no `drain()` foi resolvido na Aula 42, com `unawaited` e um `drain()` total. O silêncio que isso agravou foi endereçado na Aula 43, com o indicador de compra pendente; a dependência da inicialização caiu na Aula 45, com o gatilho de conectividade e a proteção de reentrância que ele exigiu; e a Aula 46 acrescentou a retomada do aplicativo como terceira fonte. As três cobrem o ciclo do outbox — registrar, reenviar, avisar — sem depender de ação do usuário.
 - A garantia do outbox — "nenhuma intenção de compra se perde" — passou a valer contra invalidação de identidade nas duas formas: a rejeição pelo servidor (`401`, desde a Aula 36) e a impossibilidade de obter o token (desde a Aula 41). Ela continua **não** valendo se a própria recuperação falhar de forma persistente, por exemplo com o serviço de autenticação fora do ar. Nesse caso o provedor devolve `null`, a requisição sai sem header, o servidor recusa e o evento permanece na fila — comportamento desejado — mas sem nenhum sinal ao usuário de que algo está pendente.
 - Nenhuma dessas garantias é verificada por teste automatizado de ponta a ponta. Os testes do interceptor usam um provedor fake, que por construção devolve uma credencial nova quando solicitado — provam que o cliente pede renovação e usa o que recebe, não que a política real funciona ponta a ponta. Desde a Aula 41 a política tem cobertura de unidade própria, com um fake de `AuthGateway`, e a Aula 37 mantém um teste de integração contra o emulador de Authentication; o que continua sem cobertura é a composição do `main()`. As premissas erradas descritas acima passaram por toda a suíte em seu tempo, e cada uma só apareceu ao rodar contra um ambiente real — duas contra os emuladores, uma contra o Firebase de produção.
