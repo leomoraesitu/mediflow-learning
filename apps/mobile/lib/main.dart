@@ -31,7 +31,7 @@ import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
-Future<void> main() async {
+Future<void> main()    async {
   if (checkoutApiBaseUrl.isEmpty) {
     throw StateError(
       'CHECKOUT_API_BASE_URL não foi informado. Execute com: '

@@ -9,6 +9,7 @@ setGlobalOptions({maxInstances: 5});
 const db = admin.firestore();
 
 const app = express();
+const quebraProposital = 'aspas simples';
 
 export {app};
 
