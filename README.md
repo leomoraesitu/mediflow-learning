@@ -179,28 +179,63 @@ O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para
 - O projeto terá marca própria e não alegará vínculo com empresas ou serviços reais.
 - O backend e as integrações externas existirão apenas para demonstração e aprendizado.
 
+## Integração contínua
+
+`.github/workflows/quality-gate.yml` roda a cada pull request e a cada push no `main`. Dois jobs em paralelo:
+
+| Job | Cobre | Etapas |
+| --- | --- | --- |
+| `dart` | `apps/mobile` + `packages/checkout_domain` | formatação, análise estática e testes dos dois pacotes |
+| `functions` | `functions/` | `npm ci`, lint, compilação e testes |
+
+Os dois são **checks obrigatórios** na proteção do `main`, junto com a exigência de pull request. Nada entra sem os dois verdes.
+
+### As decisões que o arquivo não explica sozinho
+
+**Dois jobs, não três.** `apps/mobile` e `packages/checkout_domain` compartilham o Pub Workspace: uma resolução de dependências serve aos dois. Separá-los custaria uma instalação do Flutter a mais para ganhar nada — os testes do domínio levam menos de um segundo. A divisão segue a toolchain, não o diretório.
+
+**Em paralelo** porque o tempo é dominado por instalação de ferramenta, não por teste, e porque a informação útil quando algo quebra não é "algo quebrou", é "o backend quebrou e o app não".
+
+**Sem filtros de caminho.** Um job pulado deixa o check pendente, e a exigência de status check travaria o merge indefinidamente. Com suítes que somam segundos, não há economia que justifique o risco.
+
+**Versão do Flutter fixa** (`3.47.1`), não `stable`: uma CI que muda de comportamento sem commit quebra por um motivo que não está em lugar nenhum. É o mesmo raciocínio do `package-lock.json` das functions.
+
+**`npm ci`, não `npm install`** — falha se o lockfile divergir do `package.json`, que é a garantia de build reprodutível descrita em `functions/README.md`.
+
+**Sem exigência de aprovação.** O GitHub não permite que o autor aprove o próprio pull request; num repositório de uma pessoa, exigir uma aprovação bloquearia todo merge e transformaria o override de administrador em hábito — e o hábito de contornar o portão também é usado no dia em que ele está legitimamente vermelho.
+
+### O que a CI não roda
+
+`apps/mobile/integration_test/identity_recovery_test.dart` exige o emulador de Authentication no ar e um dispositivo conectado. Rodá-lo na CI daria verde sem exercitar nada. Ele continua sendo executado à mão, e o `apps/mobile/README.md` descreve como.
+
+A verificação manual contra as functions em produção — emulador Android, rede desligada e religada — também continua fora, pelo mesmo motivo.
+
+### Como o portão foi verificado
+
+Com uma quebra deliberada, na mesma disciplina usada para os testes do projeto: um commit estragou a formatação no mobile e usou aspas simples nas functions, proibidas pelo `eslint-config-google`. O job `dart` parou na etapa de formatação e o `functions` na de lint, cada um no ponto correspondente ao defeito. O histórico da branch registra verde, vermelho e verde.
+
+Uma CI nunca testada é uma CI que ninguém sabe se funciona.
+
 ## Validação local
 
-Na raiz do repositório, execute:
+A CI é o portão, mas rodar antes de abrir o PR evita o ciclo de esperar o runner. Na raiz do repositório:
 
 ```bash
-dart format --output=none --set-exit-if-changed .
-flutter analyze apps/mobile
-dart pub workspace list
+dart format --output=none --set-exit-if-changed \
+  apps/mobile/lib apps/mobile/test apps/mobile/integration_test \
+  packages/checkout_domain/lib packages/checkout_domain/test
 
-cd apps/mobile
-flutter test
-cd ../..
-
-cd packages/checkout_domain
-dart test
-cd ../..
+cd apps/mobile && flutter analyze && flutter test && cd ../..
+cd packages/checkout_domain && dart analyze && dart test && cd ../..
+cd functions && npm run lint && npm run build && npm test && cd ..
 
 git diff --check
 git status --short
 ```
 
-O resultado esperado é análise estática sem problemas, 48 testes mobile aprovados — incluindo acessibilidade, navegação, validação de entrada, contador, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado da sessão, feedback de falhas recuperáveis e permanentes, feedback acessível de checkout concluído, submissão da receita, ações de avanço do fluxo, os testes do `CheckoutCubit`, o round-trip JSON de `CheckoutSessionSnapshot`, o armazenamento assíncrono em memória, as operações do banco Drift e o adapter SQLite —, além dos testes de modelos, contexto de recuperação, classificação de estados, máquina de estados, contratos de repositório, injeção por construtor e fronteiras do package aprovados e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é formatação e análise limpas, **121 testes** em `apps/mobile`, **26** em `packages/checkout_domain`, **15** em `functions`, e somente alterações intencionais exibidas pelo Git.
+
+Os READMEs de cada projeto detalham o que cada suíte cobre.
 
 ## Referências oficiais
 
