@@ -116,6 +116,8 @@ A URL da function publicada é `https://us-central1-mediflow-learning.cloudfunct
 
 ## Validação
 
+Estes comandos rodam automaticamente a cada pull request, no job `functions` do workflow `Quality Gate` — check obrigatório para mesclar no `main`. Lá a instalação é `npm ci`, que falha se o lockfile divergir do `package.json`.
+
 ```bash
 cd functions
 npm run build

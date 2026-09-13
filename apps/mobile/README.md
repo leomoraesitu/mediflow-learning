@@ -285,6 +285,8 @@ adb shell pm clear com.leomoraesitu.mediflow_mobile
 
 ## Validação
 
+Estes comandos rodam automaticamente a cada pull request, no job `dart` do workflow `Quality Gate` — que é check obrigatório para mesclar no `main`. O README da raiz descreve a configuração e as decisões por trás dela. Rodar localmente antes de abrir o PR evita o ciclo de esperar o runner.
+
 Entre no diretório do aplicativo e execute:
 
 ```bash
@@ -302,7 +304,7 @@ O resultado esperado é formatação limpa, análise estática sem problemas, 12
 
 ### Teste de integração
 
-Existe um segundo tipo de teste no projeto, com pré-requisito de ambiente e por isso fora do `flutter test` comum. Ele exige o emulador de Authentication no ar e um dispositivo conectado:
+Existe um segundo tipo de teste no projeto, com pré-requisito de ambiente e por isso fora do `flutter test` comum — e também **fora da CI**, que não tem emulador de Authentication nem dispositivo. Rodá-lo lá daria verde sem exercitar nada. Ele exige o emulador de Authentication no ar e um dispositivo conectado:
 
 ```bash
 firebase emulators:start --only auth
