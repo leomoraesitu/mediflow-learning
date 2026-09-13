@@ -23,6 +23,7 @@ void main() {
   // que cada emissão representa.
   late StreamController<void> connectivityTriggers;
   late StreamController<void> lifecycleTriggers;
+  late _FakePerformanceTracer tracer;
 
   setUp(() {
     database = CheckoutDatabase(NativeDatabase.memory());
@@ -33,6 +34,8 @@ void main() {
 
     lifecycleTriggers = StreamController<void>.broadcast();
     addTearDown(lifecycleTriggers.close);
+
+    tracer = _FakePerformanceTracer();
 
     fakeAdapter = FakeHttpClientAdapter();
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
@@ -46,7 +49,7 @@ void main() {
         retryDelays: const [],
       ),
       settings: const StaticOperationalSettings(),
-      tracer: _FakePerformanceTracer(),
+      tracer: tracer,
       syncTriggers: [connectivityTriggers.stream, lifecycleTriggers.stream],
     );
   });
@@ -253,6 +256,50 @@ void main() {
     expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(2));
 
     expect(await database.readPendingOutboxEvents(), isEmpty);
+  });
+  test('wraps each repository with the given tracer', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = [
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+    fakeAdapter.mockedResponses['/prescriptions/validate'] = [
+      ResponseBody.fromString(
+        '{"isValid": true}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+    fakeAdapter.mockedResponses['/medications/789/eligibility'] = [
+      ResponseBody.fromString(
+        '{"isEligible": true}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+
+    await dependencies.checkoutRepository.create(session());
+    await dependencies.prescriptionRepository.validate(const Prescription(reference: 'RX-001'));
+    await dependencies.medicationRepository.checkEligibility(
+      const Medication(ean: '789', name: 'Demonstrativo', unitPriceInCents: 2500),
+    );
+
+    // Os três nomes provam que cada repositório entregue pelo grafo passa pelo
+    // decorator de performance — e que cada um recebeu o seu, não o de outro.
+    // Trocar `inner` entre dois decorators compila e é invisível sem isto.
+    expect(tracer.calls, <String>[
+      'checkout_create',
+      'prescription_validate',
+      'medication_check_eligibility',
+    ]);
   });
 }
 

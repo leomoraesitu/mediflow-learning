@@ -135,7 +135,11 @@ O comportamento também foi verificado manualmente contra o emulador real, com F
 
 `tsconfig.json` descreve o que vai para produção: compila apenas `src/`, emite para `lib/` e **exclui os arquivos `*.test.ts`**, para que o build de deploy não tente compilar testes nem exija `jest` e `supertest`, que são dependências de desenvolvimento.
 
-`tsconfig.dev.json` cobre o que existe só para ferramental — `.eslintrc.js`, `jest.config.js` e os próprios testes. O ESLint aponta para os dois (`parserOptions.project`), então cada arquivo do projeto pertence a exatamente um deles. O Jest ignora essa divisão: ele decide o que testar pela própria configuração, não pelo `include` do TypeScript.
+`tsconfig.dev.json` cobre o que existe só para ferramental — `.eslintrc.js`, `jest.config.js` e os próprios testes. Ele **estende** o de produção, para que ESLint e `ts-jest` enxerguem os mesmos `strict`, `target` e `module` que o build real usa; sem isso, os testes eram analisados com regras mais frouxas que o código que eles testam.
+
+É lá que mora `types: ["jest"]`, e não no tsconfig de produção: quem precisa do tipo do runner é o `ts-jest`, e o build de deploy não deve conhecê-lo. Para isso, `jest.config.js` aponta explicitamente o `ts-jest` para `tsconfig.dev.json` — por padrão ele usaria o mais próximo, que é o de produção.
+
+Duas armadilhas nesse arranjo, ambas encontradas ao montá-lo. Tirar `jest` do tsconfig de produção **sem** apontar o `ts-jest` para o outro arquivo quebra a suíte inteira com `Cannot find name 'describe'`. E o `extends` herda também o `exclude`, que remove `src/**/*.test.ts` — como `exclude` vence `include`, os testes ficariam fora de qualquer projeto e o ESLint recusaria analisá-los com `"parserOptions.project" has been provided`. Por isso `tsconfig.dev.json` zera o `exclude`.
 
 ## Referências oficiais
 

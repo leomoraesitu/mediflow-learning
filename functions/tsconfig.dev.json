@@ -1,11 +1,21 @@
 {
+  // Estende a configuração de produção em vez de redefinir do zero: assim o
+  // ferramental — ESLint e ts-jest — enxerga os mesmos `strict`, `target` e
+  // `module` que o build real usa. Sem o `extends`, os arquivos de teste eram
+  // analisados com regras mais frouxas que o código que eles testam.
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "allowJs": true,
-    "noEmit": true
+    "noEmit": true,
+    // `jest` vive aqui, e não no tsconfig de produção: é o `ts-jest` que
+    // precisa dele para compilar os testes, e o build de deploy não deve
+    // conhecer o runner.
+    "types": ["jest", "node"]
   },
-  "include": [
-    ".eslintrc.js",
-    "jest.config.js",
-    "src/**/*.test.ts"
-  ]
+  "include": [".eslintrc.js", "jest.config.js", "src/**/*.test.ts"],
+  // O `extends` herda o `exclude` do tsconfig de produção, que remove
+  // `src/**/*.test.ts` — e `exclude` vence `include`. Sem zerar aqui, os
+  // arquivos de teste ficariam fora de qualquer projeto e o ESLint recusaria
+  // analisá-los com "parserOptions.project has been provided".
+  "exclude": []
 }

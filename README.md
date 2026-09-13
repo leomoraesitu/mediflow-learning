@@ -233,7 +233,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação e análise limpas, **123 testes** em `apps/mobile`, **26** em `packages/checkout_domain`, **15** em `functions`, e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é formatação e análise limpas, **124 testes** em `apps/mobile`, **26** em `packages/checkout_domain`, **15** em `functions`, e somente alterações intencionais exibidas pelo Git.
 
 Dois desses testes são goldens, que comparam a renderização da tela inicial com imagens versionadas. Eles toleram até 3% de diferença de pixels, porque a renderização do macOS e a do Linux da CI divergem em cerca de 1,5% — o `apps/mobile/README.md` registra os números medidos e o que essa troca custa.
 
