@@ -25,6 +25,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/firebase_options.dart';
+import 'package:mediflow_mobile/lifecycle/lifecycle_sync_triggers.dart';
 import 'package:mediflow_mobile/observability/firebase_performance_tracer.dart';
 import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
@@ -72,7 +73,15 @@ Future<void> main() async {
     ),
     settings: settings,
     tracer: FirebasePerformanceTracer(performance: FirebasePerformance.instance),
-    syncTriggers: ConnectivitySyncTriggers.defaults().stream,
+    // Duas fontes, fundidas pela composição. Nenhuma delas é guardada para
+    // descarte, e isso é deliberado: as duas vivem o processo inteiro, como o
+    // agendador que elas alimentam. Os `dispose()` existem para os testes.
+    //
+    // Elas se complementam. A conectividade cobre a rede que volta com o
+    // aplicativo em uso; a retomada cobre o caso em que a mudança acontece
+    // com o processo em segundo plano, onde o Android não promete entregar o
+    // aviso — restrições de background e Doze podem engoli-lo.
+    syncTriggers: [ConnectivitySyncTriggers.defaults().stream, LifecycleSyncTriggers().stream],
   );
 
   // As duas ações que a composição deliberadamente não faz.

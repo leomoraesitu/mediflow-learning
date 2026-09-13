@@ -18,14 +18,21 @@ void main() {
   late CheckoutDatabase database;
   late FakeHttpClientAdapter fakeAdapter;
   late AppDependencies dependencies;
-  late StreamController<void> syncTriggers;
+  // Nomeados pelo papel que têm na produção — conectividade e ciclo de vida.
+  // A composição não sabe a diferença entre eles, mas quem lê o teste sabe o
+  // que cada emissão representa.
+  late StreamController<void> connectivityTriggers;
+  late StreamController<void> lifecycleTriggers;
 
   setUp(() {
     database = CheckoutDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
-    syncTriggers = StreamController<void>.broadcast();
-    addTearDown(syncTriggers.close);
+    connectivityTriggers = StreamController<void>.broadcast();
+    addTearDown(connectivityTriggers.close);
+
+    lifecycleTriggers = StreamController<void>.broadcast();
+    addTearDown(lifecycleTriggers.close);
 
     fakeAdapter = FakeHttpClientAdapter();
     final dio = Dio(BaseOptions(baseUrl: 'https://example.com'))..httpClientAdapter = fakeAdapter;
@@ -40,7 +47,7 @@ void main() {
       ),
       settings: const StaticOperationalSettings(),
       tracer: _FakePerformanceTracer(),
-      syncTriggers: syncTriggers.stream,
+      syncTriggers: [connectivityTriggers.stream, lifecycleTriggers.stream],
     );
   });
 
@@ -129,7 +136,7 @@ void main() {
       ),
       settings: const StaticOperationalSettings(),
       tracer: tracer,
-      syncTriggers: StreamController<void>().stream,
+      syncTriggers: [connectivityTriggers.stream, lifecycleTriggers.stream],
     );
 
     localAdapter.mockedResponses['/checkouts'] = [
@@ -172,7 +179,7 @@ void main() {
     dependencies.scheduler.start();
     addTearDown(dependencies.scheduler.dispose);
 
-    syncTriggers.add(null);
+    connectivityTriggers.add(null);
     await pumpEventQueue();
 
     // A fila esvaziar prova a corrente inteira: o gatilho chegou ao agendador,
@@ -204,7 +211,7 @@ void main() {
     // dispara `unawaited(drain())` e logo em seguida `scheduler.start()`, e um
     // evento de conectividade nos primeiros milissegundos cai bem aqui.
     final inicial = dependencies.synchronizer.drain();
-    syncTriggers.add(null);
+    lifecycleTriggers.add(null);
     await pumpEventQueue();
     await inicial;
 
@@ -213,6 +220,38 @@ void main() {
     // ela que prova que o grafo monta **um** sincronizador: com dois, os dois
     // laços leem a mesma fila e ambos enviam.
     expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(1));
+    expect(await database.readPendingOutboxEvents(), isEmpty);
+  });
+  test('drains on a trigger from any source', () async {
+    fakeAdapter.mockedResponses['/checkouts'] = [
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+      ResponseBody.fromString(
+        '{"id": "remote-checkout-id"}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    ];
+
+    await enqueue('key-01');
+    dependencies.scheduler.start();
+    addTearDown(dependencies.scheduler.dispose);
+    connectivityTriggers.add(null);
+    await pumpEventQueue();
+    expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(1));
+
+    await enqueue('key-02');
+    lifecycleTriggers.add(null);
+    await pumpEventQueue();
+    expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(2));
+
     expect(await database.readPendingOutboxEvents(), isEmpty);
   });
 }

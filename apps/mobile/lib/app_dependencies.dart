@@ -1,3 +1,4 @@
+import 'package:async/async.dart';
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
@@ -56,7 +57,7 @@ AppDependencies composeDependencies({
   required CheckoutApiClient apiClient,
   required OperationalSettings settings,
   required PerformanceTracer tracer,
-  required Stream<void> syncTriggers,
+  required Iterable<Stream<void>> syncTriggers,
 }) {
   final outboxCheckoutRepository = OutboxCheckoutRepository(
     inner: DioCheckoutRepository(apiClient: apiClient),
@@ -94,6 +95,6 @@ AppDependencies composeDependencies({
     synchronizer: synchronizer,
     settings: settings,
     hasPendingSync: database.watchHasPendingSync(),
-    scheduler: OutboxSyncScheduler(syncTriggers, drain: synchronizer.drain),
+    scheduler: OutboxSyncScheduler(StreamGroup.merge(syncTriggers), drain: synchronizer.drain),
   );
 }
