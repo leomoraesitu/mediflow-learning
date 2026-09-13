@@ -46,3 +46,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Imagens de diff escritas quando um golden falha. São artefato de
+# depuração: úteis na hora de decidir se a mudança foi regressão ou
+# intencional, inúteis no histórico.
+test/failures/
