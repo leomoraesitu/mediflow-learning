@@ -1,0 +1,103 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Permite reexecutar sem commit — útil quando algo fora do repositório muda.
+  workflow_dispatch:
+
+# O token padrão vem com escrita; esta CI só precisa ler o código.
+permissions:
+  contents: read
+
+# Empurrar vários commits seguidos numa branch não deve deixar execuções
+# obsoletas rodando. No `main` isso não se aplica: lá o histórico completo
+# importa, e a referência é outra, então os grupos não se misturam.
+concurrency:
+  group: quality-gate-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Um job para os dois pacotes Dart: eles compartilham o Pub Workspace, e uma
+  # resolução de dependências serve aos dois. Separá-los custaria uma
+  # instalação do Flutter a mais para ganhar nada.
+  dart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versão fixa, não `stable`: com `stable` a CI mudaria de comportamento
+      # sem ninguém tocar no repositório, e um dia o build quebraria por um
+      # motivo que não está em commit nenhum.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+
+      # Na raiz: é workspace, e isso resolve `apps/mobile` e
+      # `packages/checkout_domain` de uma vez.
+      - name: Resolver dependências
+        run: flutter pub get
+
+      # Cobre os dois pacotes. Localmente o formatador só é chamado dentro de
+      # `apps/mobile`, então um arquivo mal formatado no domínio passaria
+      # despercebido até aqui.
+      - name: Formatação
+        run: >
+          dart format --output=none --set-exit-if-changed
+          apps/mobile/lib apps/mobile/test apps/mobile/integration_test
+          packages/checkout_domain/lib packages/checkout_domain/test
+
+      - name: Análise estática do aplicativo
+        working-directory: apps/mobile
+        run: flutter analyze
+
+      - name: Análise estática do domínio
+        working-directory: packages/checkout_domain
+        run: dart analyze
+
+      # `integration_test/` fica de fora de propósito: exige o emulador de
+      # Authentication no ar e um dispositivo conectado. Rodá-lo aqui daria
+      # verde sem exercitar nada.
+      - name: Testes do aplicativo
+        working-directory: apps/mobile
+        run: flutter test
+
+      - name: Testes do domínio
+        working-directory: packages/checkout_domain
+        run: dart test
+
+  functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          # Sem isto o cache não encontra o lockfile, porque ele não está na
+          # raiz, e a etapa fica sem efeito.
+          cache-dependency-path: functions/package-lock.json
+
+      # `ci`, não `install`: respeita o lockfile estritamente e falha se ele
+      # divergir do `package.json` — a garantia de build reprodutível que o
+      # README descreve.
+      - name: Instalar dependências
+        working-directory: functions
+        run: npm ci
+
+      - name: Lint
+        working-directory: functions
+        run: npm run lint
+
+      - name: Compilação
+        working-directory: functions
+        run: npm run build
+
+      - name: Testes
+        working-directory: functions
+        run: npm test
