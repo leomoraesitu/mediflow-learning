@@ -240,6 +240,35 @@ Nenhum dos dois adaptadores é descartado em produção: eles vivem o processo, 
 
 **O que a medição mostrou.** Com as duas fontes ativas, a fila esvaziou com o aplicativo em segundo plano, antes de ser trazido de volta — neste emulador o Android entregou a mudança de conectividade ao processo em background, e o gatilho da Aula 45 bastou. Só um build temporário com apenas a fonte de ciclo de vida isolou o comportamento: rede religada em segundo plano não moveu a fila em quatro verificações; a retomada a esvaziou. Nas condições reproduzíveis aqui, portanto, a retomada é **redundante** — ela cobre Doze, restrições de fabricante e permanência longa em segundo plano, que o emulador não reproduz.
 
+### Testes de golden (Aula 48)
+
+`test/benefits_home_golden_test.dart` compara a renderização da tela de benefícios, em dois estados, com imagens versionadas em `test/goldens/`. Eles cobrem a única categoria de defeito que os outros testes não enxergam: **posição e distribuição de espaço**.
+
+O motivo é concreto. Na Aula 43, envolver o cartão numa `Column` fez o `Center` do `MediFlowContentCard` perder o espaço para centralizar, e o cartão subiu 82 px — com 101 testes verdes, porque todos verificam presença e nenhum verifica posição.
+
+A tela foi escolhida por ser estável: não muda há dez aulas. O `PharmacyModePage` ficou de fora porque ganhou botão novo em quatro das últimas dez — um golden que se regrava toda aula ensina o reflexo de apertar `--update-goldens` sem olhar, e aí ele deixa de testar qualquer coisa.
+
+A superfície é fixada em 390×844 no próprio teste. O padrão do `flutter test` é 800×600, e depender dele faria todos os goldens falharem de uma vez no dia em que esse padrão mudasse.
+
+#### O que eles não cobrem
+
+**Texto.** O `flutter test` não carrega fontes reais, então todo texto renderiza como retângulo. Trocar "Saldo disponível" por outra frase do mesmo comprimento passa despercebido.
+
+**Mudanças visuais abaixo de 3%.** `test/flutter_test_config.dart` instala um comparador com tolerância, porque goldens gerados no macOS não batem exatamente com o Linux da CI — antialiasing de bordas arredondadas e sombras diverge. Os números medidos neste projeto:
+
+| Origem da diferença | Percentual |
+| --- | --- |
+| Ruído de plataforma (macOS → Linux) | 1,25% e 1,72% |
+| Regressão real (o cartão subindo 82 px) | 46,34% e 43,43% |
+
+A tolerância de 3% fica bem acima do ruído e muito abaixo do sinal. Ela só é defensável por causa dessa distância de uma ordem de grandeza — com ruído de 20% e sinal de 40%, a resposta teria sido outra, e as alternativas seriam gerar os goldens na CI ou rodá-los apenas lá. As duas quebram o ciclo local: a primeira deixa vermelhos permanentes no Mac, a segunda impede gerar e inspecionar a imagem antes de versionar.
+
+#### Quando um golden falhar
+
+O Flutter escreve as imagens de comparação em `test/failures/` — a gerada, a de referência e o diff isolado. **Olhe o diff antes de decidir.** Regravar com `flutter test --update-goldens` é para mudança intencional; para regressão, o certo é consertar o código.
+
+`test/failures/` está no `.gitignore`: é artefato de depuração, não histórico.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
@@ -300,7 +329,7 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação limpa, análise estática sem problemas, 121 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox, o indicador de compra pendente a montagem do grafo de dependências, a proteção contra drenagens concorrentes, o agendador de sincronização, a tradução de conectividade em gatilhos e a retomada do aplicativo como fonte — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
+O resultado esperado é formatação limpa, análise estática sem problemas, 123 testes aprovados — incluindo acessibilidade, navegação, validação de entrada, Cubits, integração da sessão com a interface, efeito reativo de confirmação, progresso selecionado, feedback de falhas, feedback acessível de checkout concluído, submissão da receita, ações de avanço do checkout, o round-trip JSON do snapshot, o armazenamento assíncrono em memória, as operações do banco Drift, o adapter SQLite, a restauração/persistência de sessão pelo `CheckoutCubit`, os três repositórios HTTP com Dio, sua classificação de falhas, o envio da chave de idempotência, o ciclo completo do outbox local (registro, remoção e reenvio) o modo de manutenção controlado por configuração operacional o envio do token de autenticação como header `Bearer` a renovação automática de credencial após um `401`, a retentativa de falhas transitórias com recuo exponencial a recuperação de identidade quando o token não chega a ser obtido a tolerância do `drain()` a uma falha de leitura do outbox, a consulta reativa do outbox, o indicador de compra pendente a montagem do grafo de dependências, a proteção contra drenagens concorrentes, o agendador de sincronização, a tradução de conectividade em gatilhos a retomada do aplicativo como fonte e os dois goldens da tela de benefícios — e somente alterações intencionais exibidas pelo Git. O Quality Gate completo do monorepo também executa os testes de fronteira do package `checkout_domain`, agora incluindo a geração e preservação da `idempotencyKey`. `test/flutter_test_config.dart` desativa o aviso do Drift sobre múltiplas instâncias de `CheckoutDatabase` — inofensivo aqui, já que cada teste de widget abre seu próprio banco isolado em memória, mas o Drift não distingue isso de um erro real de compartilhamento de `QueryExecutor`.
 
 ### Teste de integração
 
