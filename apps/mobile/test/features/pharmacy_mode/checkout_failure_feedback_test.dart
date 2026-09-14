@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
-import 'package:mediflow_mobile/main.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 
 void main() {
   testWidgets('shows an accessible message and retries a recoverable failure', (tester) async {

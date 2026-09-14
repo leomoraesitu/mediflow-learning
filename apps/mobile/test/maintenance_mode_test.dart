@@ -5,6 +5,8 @@ import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_indicator.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 import 'package:mediflow_mobile/main.dart';
 
 void main() {
