@@ -17,12 +17,7 @@ Future<void> main() async {
     });
 
     test('does not declare infrastructure dependencies', () {
-      const forbiddenDependencies = <String>[
-        'flutter:',
-        'firebase_',
-        'dio:',
-        'drift:',
-      ];
+      const forbiddenDependencies = <String>['flutter:', 'firebase_', 'dio:', 'drift:'];
 
       for (final dependency in forbiddenDependencies) {
         expect(

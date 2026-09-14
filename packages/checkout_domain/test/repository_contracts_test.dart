@@ -27,10 +27,7 @@ final class _FakeCheckoutRepository implements CheckoutRepository {
   final String createdCheckoutId;
   final CheckoutSession checkoutResult;
 
-  const _FakeCheckoutRepository({
-    required this.createdCheckoutId,
-    required this.checkoutResult,
-  });
+  const _FakeCheckoutRepository({required this.createdCheckoutId, required this.checkoutResult});
 
   @override
   Future<String> create(CheckoutSession session) async {
@@ -148,13 +145,9 @@ void main() {
         status: CheckoutStatus.collectingMedication,
       );
 
-      const prescriptionRepository = _FakePrescriptionRepository(
-        validationResult: true,
-      );
+      const prescriptionRepository = _FakePrescriptionRepository(validationResult: true);
 
-      const medicationRepository = _FakeMedicationRepository(
-        eligibilityResult: true,
-      );
+      const medicationRepository = _FakeMedicationRepository(eligibilityResult: true);
 
       final checkoutRepository = _FakeCheckoutRepository(
         createdCheckoutId: 'checkout-remote-01',
@@ -168,12 +161,8 @@ void main() {
       );
 
       // Act
-      final prescriptionIsValid = await consumer.validatePrescription(
-        prescription,
-      );
-      final medicationIsEligible = await consumer.checkMedicationEligibility(
-        medication,
-      );
+      final prescriptionIsValid = await consumer.validatePrescription(prescription);
+      final medicationIsEligible = await consumer.checkMedicationEligibility(medication);
       final checkoutId = await consumer.createCheckout(session);
 
       // Assert
