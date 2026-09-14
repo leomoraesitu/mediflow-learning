@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
-import 'package:mediflow_mobile/main.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 
 void main() {
   testWidgets('shows eligibility validation as checkout step 2', (tester) async {

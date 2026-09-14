@@ -1,3 +1,4 @@
+import 'package:checkout_domain/checkout_domain.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,8 +8,8 @@ import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/medication_counter_content.dart';
 import 'package:mediflow_mobile/main.dart';
-import 'package:checkout_domain/checkout_domain.dart';
 
 void main() {
   testWidgets('valid scan updates the checkout session used by the screen', (tester) async {
