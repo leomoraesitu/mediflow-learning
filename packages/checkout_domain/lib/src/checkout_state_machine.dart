@@ -7,12 +7,8 @@ import 'checkout_status.dart';
 final class CheckoutStateMachine {
   const CheckoutStateMachine();
 
-  CheckoutSession transition({
-    required CheckoutSession session,
-    required CheckoutEvent event,
-  }) {
-    if (session.status == CheckoutStatus.collectingMedication &&
-        event is MedicationScanned) {
+  CheckoutSession transition({required CheckoutSession session, required CheckoutEvent event}) {
+    if (session.status == CheckoutStatus.collectingMedication && event is MedicationScanned) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -25,8 +21,7 @@ final class CheckoutStateMachine {
         idempotencyKey: session.idempotencyKey,
       );
     }
-    if (session.status == CheckoutStatus.collectingMedication &&
-        event is PrescriptionSubmitted) {
+    if (session.status == CheckoutStatus.collectingMedication && event is PrescriptionSubmitted) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -39,8 +34,7 @@ final class CheckoutStateMachine {
         idempotencyKey: session.idempotencyKey,
       );
     }
-    if (session.status == CheckoutStatus.validatingPrescription &&
-        event is PrescriptionValidated) {
+    if (session.status == CheckoutStatus.validatingPrescription && event is PrescriptionValidated) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -53,8 +47,7 @@ final class CheckoutStateMachine {
         idempotencyKey: session.idempotencyKey,
       );
     }
-    if (session.status == CheckoutStatus.checkingEligibility &&
-        event is EligibilityConfirmed) {
+    if (session.status == CheckoutStatus.checkingEligibility && event is EligibilityConfirmed) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -67,8 +60,7 @@ final class CheckoutStateMachine {
         idempotencyKey: const Uuid().v4(),
       );
     }
-    if (session.status == CheckoutStatus.creatingPayment &&
-        event is PaymentCreated) {
+    if (session.status == CheckoutStatus.creatingPayment && event is PaymentCreated) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -145,9 +137,7 @@ final class CheckoutStateMachine {
         idempotencyKey: session.idempotencyKey,
       );
     }
-    if (!session.status.isTerminal &&
-        event is CheckoutFailed &&
-        !event.recoverable) {
+    if (!session.status.isTerminal && event is CheckoutFailed && !event.recoverable) {
       return CheckoutSession(
         id: session.id,
         availableBalanceInCents: session.availableBalanceInCents,
@@ -161,10 +151,7 @@ final class CheckoutStateMachine {
       );
     }
 
-    throw InvalidCheckoutTransitionException(
-      currentStatus: session.status,
-      event: event,
-    );
+    throw InvalidCheckoutTransitionException(currentStatus: session.status, event: event);
   }
 }
 
@@ -172,10 +159,7 @@ final class InvalidCheckoutTransitionException implements Exception {
   final CheckoutStatus currentStatus;
   final CheckoutEvent event;
 
-  const InvalidCheckoutTransitionException({
-    required this.currentStatus,
-    required this.event,
-  });
+  const InvalidCheckoutTransitionException({required this.currentStatus, required this.event});
 
   @override
   String toString() {

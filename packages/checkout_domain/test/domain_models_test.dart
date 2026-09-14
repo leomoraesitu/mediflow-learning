@@ -74,11 +74,7 @@ void main() {
       );
       expect(
         () => session.medications.add(
-          Medication(
-            ean: 'EAN-999',
-            name: 'Medication 999',
-            unitPriceInCents: 9999,
-          ),
+          Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 9999),
         ),
         throwsUnsupportedError,
       );
@@ -112,19 +108,13 @@ void main() {
       final prescription = Prescription(reference: 'RX-001');
 
       final MedicationScanned event = MedicationScanned(medication: medication);
-      final PrescriptionSubmitted event2 = PrescriptionSubmitted(
-        prescription: prescription,
-      );
-      final PaymentCreated event3 = PaymentCreated(
-        remoteCheckoutId: 'checkout-001',
-      );
+      final PrescriptionSubmitted event2 = PrescriptionSubmitted(prescription: prescription);
+      final PaymentCreated event3 = PaymentCreated(remoteCheckoutId: 'checkout-001');
       final CheckoutFailed event4 = CheckoutFailed(
         errorMessage: 'Network error',
         recoverable: true,
       );
-      final MaintenanceDetected event5 = MaintenanceDetected(
-        message: 'Maintenance in progress',
-      );
+      final MaintenanceDetected event5 = MaintenanceDetected(message: 'Maintenance in progress');
 
       expect(event.medication, medication);
       expect(event2.prescription, prescription);

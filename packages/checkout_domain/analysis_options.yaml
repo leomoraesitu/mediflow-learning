@@ -13,6 +13,14 @@
 
 include: package:lints/recommended.yaml
 
+# Mesma largura declarada em `apps/mobile/analysis_options.yaml`, e pela mesma
+# razão: `dart format` resolve a configuração pelo arquivo mais próximo, então
+# sem esta linha o domínio ficava em 80 enquanto o aplicativo ficava em 100. Um
+# arquivo daqui aberto no editor era salvo com a largura do outro pacote, e só
+# o portão de qualidade percebia — foi o que aconteceu na Aula 50.
+formatter:
+  page_width: 100
+
 # Uncomment the following section to specify additional rules.
 
 # linter:

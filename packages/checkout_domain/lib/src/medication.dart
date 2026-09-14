@@ -4,9 +4,5 @@ final class Medication {
   final String name;
   final int unitPriceInCents;
 
-  const Medication({
-    required this.ean,
-    required this.name,
-    required this.unitPriceInCents,
-  });
+  const Medication({required this.ean, required this.name, required this.unitPriceInCents});
 }

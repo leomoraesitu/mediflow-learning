@@ -11,11 +11,7 @@ void main() {
         medications: [],
         status: CheckoutStatus.collectingMedication,
       );
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
-      );
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       final result = const CheckoutStateMachine().transition(
         session: session,
@@ -28,72 +24,55 @@ void main() {
       expect(result.medications, [medication]);
     });
 
-    test(
-      'completes the happy path from prescription submission to payment',
-      () {
-        const prescription = Prescription(reference: 'Prescription example');
-        const medication = Medication(
-          ean: 'EAN-999',
-          name: 'Medication 999',
-          unitPriceInCents: 99,
-        );
+    test('completes the happy path from prescription submission to payment', () {
+      const prescription = Prescription(reference: 'Prescription example');
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
-        const machine = CheckoutStateMachine();
+      const machine = CheckoutStateMachine();
 
-        final session = CheckoutSession(
-          id: 'session-01',
-          availableBalanceInCents: 10000,
-          prescription: null,
-          medications: [medication],
-          status: CheckoutStatus.collectingMedication,
-        );
-
-        final validatingPrescription = machine.transition(
-          session: session,
-          event: const PrescriptionSubmitted(prescription: prescription),
-        );
-        final checkingEligibility = machine.transition(
-          session: validatingPrescription,
-          event: const PrescriptionValidated(),
-        );
-        final creatingPayment = machine.transition(
-          session: checkingEligibility,
-          event: const EligibilityConfirmed(),
-        );
-        final awaitingConfirmation = machine.transition(
-          session: creatingPayment,
-          event: const PaymentCreated(remoteCheckoutId: 'CheckoutId-01'),
-        );
-        final paid = machine.transition(
-          session: awaitingConfirmation,
-          event: const PaymentConfirmed(),
-        );
-
-        expect(
-          validatingPrescription.status,
-          CheckoutStatus.validatingPrescription,
-        );
-        expect(checkingEligibility.status, CheckoutStatus.checkingEligibility);
-        expect(creatingPayment.status, CheckoutStatus.creatingPayment);
-        expect(
-          awaitingConfirmation.status,
-          CheckoutStatus.awaitingConfirmation,
-        );
-        expect(paid.status, CheckoutStatus.paid);
-        expect(validatingPrescription.prescription, same(prescription));
-        expect(awaitingConfirmation.remoteCheckoutId, 'CheckoutId-01');
-        expect(paid.remoteCheckoutId, 'CheckoutId-01');
-        expect(paid.id, session.id);
-        expect(paid.availableBalanceInCents, session.availableBalanceInCents);
-        expect(paid.medications, [medication]);
-      },
-    );
-    test('rejects an invalid event for the current status', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
+      final session = CheckoutSession(
+        id: 'session-01',
+        availableBalanceInCents: 10000,
+        prescription: null,
+        medications: [medication],
+        status: CheckoutStatus.collectingMedication,
       );
+
+      final validatingPrescription = machine.transition(
+        session: session,
+        event: const PrescriptionSubmitted(prescription: prescription),
+      );
+      final checkingEligibility = machine.transition(
+        session: validatingPrescription,
+        event: const PrescriptionValidated(),
+      );
+      final creatingPayment = machine.transition(
+        session: checkingEligibility,
+        event: const EligibilityConfirmed(),
+      );
+      final awaitingConfirmation = machine.transition(
+        session: creatingPayment,
+        event: const PaymentCreated(remoteCheckoutId: 'CheckoutId-01'),
+      );
+      final paid = machine.transition(
+        session: awaitingConfirmation,
+        event: const PaymentConfirmed(),
+      );
+
+      expect(validatingPrescription.status, CheckoutStatus.validatingPrescription);
+      expect(checkingEligibility.status, CheckoutStatus.checkingEligibility);
+      expect(creatingPayment.status, CheckoutStatus.creatingPayment);
+      expect(awaitingConfirmation.status, CheckoutStatus.awaitingConfirmation);
+      expect(paid.status, CheckoutStatus.paid);
+      expect(validatingPrescription.prescription, same(prescription));
+      expect(awaitingConfirmation.remoteCheckoutId, 'CheckoutId-01');
+      expect(paid.remoteCheckoutId, 'CheckoutId-01');
+      expect(paid.id, session.id);
+      expect(paid.availableBalanceInCents, session.availableBalanceInCents);
+      expect(paid.medications, [medication]);
+    });
+    test('rejects an invalid event for the current status', () {
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const machine = CheckoutStateMachine();
 
@@ -106,10 +85,7 @@ void main() {
       );
 
       expect(
-        () => machine.transition(
-          session: session,
-          event: const PaymentConfirmed(),
-        ),
+        () => machine.transition(session: session, event: const PaymentConfirmed()),
         throwsA(
           isA<InvalidCheckoutTransitionException>()
               .having(
@@ -123,11 +99,7 @@ void main() {
     });
 
     test('moves an active checkout to maintenance with a message', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
-      );
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const prescription = Prescription(reference: 'Teste');
 
@@ -141,9 +113,7 @@ void main() {
 
       final result = const CheckoutStateMachine().transition(
         session: session,
-        event: const MaintenanceDetected(
-          message: 'Serviço temporariamente indisponível.',
-        ),
+        event: const MaintenanceDetected(message: 'Serviço temporariamente indisponível.'),
       );
 
       expect(result, isNot(same(session)));
@@ -159,55 +129,44 @@ void main() {
       expect(session.status, CheckoutStatus.checkingEligibility);
     });
 
-    test(
-      'moves timeout to recoverable failure and remembers interrupted status',
-      () {
-        const medication = Medication(
-          ean: 'EAN-999',
-          name: 'Medication 999',
-          unitPriceInCents: 99,
-        );
+    test('moves timeout to recoverable failure and remembers interrupted status', () {
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
-        const prescription = Prescription(reference: 'Teste');
+      const prescription = Prescription(reference: 'Teste');
 
-        final session = CheckoutSession(
-          id: 'session-01',
-          availableBalanceInCents: 10000,
-          prescription: prescription,
-          medications: [medication],
-          status: CheckoutStatus.creatingPayment,
-        );
-
-        final result = const CheckoutStateMachine().transition(
-          session: session,
-          event: const CheckoutFailed(
-            errorMessage: 'Tempo limite ao criar pagamento.',
-            recoverable: true,
-          ),
-        );
-
-        expect(result, isNot(same(session)));
-        expect(result.status, CheckoutStatus.recoverableFailure);
-        expect(result.status.isTerminal, isFalse);
-        expect(result.retryTargetStatus, CheckoutStatus.creatingPayment);
-        expect(result.statusMessage, 'Tempo limite ao criar pagamento.');
-
-        expect(result.id, session.id);
-        expect(result.availableBalanceInCents, session.availableBalanceInCents);
-        expect(result.prescription, same(prescription));
-        expect(result.medications, [medication]);
-
-        expect(session.status, CheckoutStatus.creatingPayment);
-        expect(session.retryTargetStatus, isNull);
-        expect(session.statusMessage, isNull);
-      },
-    );
-    test('retries the interrupted status and clears failure context', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
+      final session = CheckoutSession(
+        id: 'session-01',
+        availableBalanceInCents: 10000,
+        prescription: prescription,
+        medications: [medication],
+        status: CheckoutStatus.creatingPayment,
       );
+
+      final result = const CheckoutStateMachine().transition(
+        session: session,
+        event: const CheckoutFailed(
+          errorMessage: 'Tempo limite ao criar pagamento.',
+          recoverable: true,
+        ),
+      );
+
+      expect(result, isNot(same(session)));
+      expect(result.status, CheckoutStatus.recoverableFailure);
+      expect(result.status.isTerminal, isFalse);
+      expect(result.retryTargetStatus, CheckoutStatus.creatingPayment);
+      expect(result.statusMessage, 'Tempo limite ao criar pagamento.');
+
+      expect(result.id, session.id);
+      expect(result.availableBalanceInCents, session.availableBalanceInCents);
+      expect(result.prescription, same(prescription));
+      expect(result.medications, [medication]);
+
+      expect(session.status, CheckoutStatus.creatingPayment);
+      expect(session.retryTargetStatus, isNull);
+      expect(session.statusMessage, isNull);
+    });
+    test('retries the interrupted status and clears failure context', () {
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const prescription = Prescription(reference: 'Teste');
 
@@ -241,11 +200,7 @@ void main() {
       expect(session.statusMessage, 'Conexão perdida durante a confirmação.');
     });
     test('moves permanent failure to terminal failed status', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
-      );
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const prescription = Prescription(reference: 'Teste');
 
@@ -280,11 +235,7 @@ void main() {
       expect(session.statusMessage, isNull);
     });
     test('accepts asynchronous confirmation after recoverable failure', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
-      );
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const prescription = Prescription(reference: 'Teste');
 
@@ -319,11 +270,7 @@ void main() {
       expect(session.statusMessage, 'Conexão perdida durante a confirmação.');
     });
     test('generates an idempotency key when eligibility is confirmed', () {
-      const medication = Medication(
-        ean: 'EAN-999',
-        name: 'Medication 999',
-        unitPriceInCents: 99,
-      );
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
       const prescription = Prescription(reference: 'Teste');
 
@@ -342,35 +289,28 @@ void main() {
       expect(result.status, CheckoutStatus.creatingPayment);
       expect(result.idempotencyKey, isNot(session.idempotencyKey));
     });
-    test(
-      'keeps the same idempotency key when retrying after recoverable failure',
-      () {
-        const medication = Medication(
-          ean: 'EAN-999',
-          name: 'Medication 999',
-          unitPriceInCents: 99,
-        );
+    test('keeps the same idempotency key when retrying after recoverable failure', () {
+      const medication = Medication(ean: 'EAN-999', name: 'Medication 999', unitPriceInCents: 99);
 
-        const prescription = Prescription(reference: 'Teste');
+      const prescription = Prescription(reference: 'Teste');
 
-        final session = CheckoutSession(
-          id: 'session-01',
-          availableBalanceInCents: 10000,
-          prescription: prescription,
-          medications: [medication],
-          status: CheckoutStatus.recoverableFailure,
-          retryTargetStatus: CheckoutStatus.awaitingConfirmation,
-          remoteCheckoutId: 'CheckoutId-01',
-          idempotencyKey: 'IdempotencyKey-01',
-        );
-        final result = const CheckoutStateMachine().transition(
-          session: session,
-          event: const RetryRequested(),
-        );
-        expect(result, isNot(same(session)));
-        expect(result.status, CheckoutStatus.awaitingConfirmation);
-        expect(result.idempotencyKey, session.idempotencyKey);
-      },
-    );
+      final session = CheckoutSession(
+        id: 'session-01',
+        availableBalanceInCents: 10000,
+        prescription: prescription,
+        medications: [medication],
+        status: CheckoutStatus.recoverableFailure,
+        retryTargetStatus: CheckoutStatus.awaitingConfirmation,
+        remoteCheckoutId: 'CheckoutId-01',
+        idempotencyKey: 'IdempotencyKey-01',
+      );
+      final result = const CheckoutStateMachine().transition(
+        session: session,
+        event: const RetryRequested(),
+      );
+      expect(result, isNot(same(session)));
+      expect(result.status, CheckoutStatus.awaitingConfirmation);
+      expect(result.idempotencyKey, session.idempotencyKey);
+    });
   });
 }

@@ -20,9 +20,7 @@ extension CheckoutStatusProperties on CheckoutStatus {
       CheckoutStatus.creatingPayment ||
       CheckoutStatus.awaitingConfirmation ||
       CheckoutStatus.recoverableFailure => false,
-      CheckoutStatus.maintenance ||
-      CheckoutStatus.failed ||
-      CheckoutStatus.paid => true,
+      CheckoutStatus.maintenance || CheckoutStatus.failed || CheckoutStatus.paid => true,
     };
   }
 }
