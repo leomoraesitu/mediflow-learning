@@ -5,7 +5,8 @@ import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart
 
 class MedicationCounterContent extends StatelessWidget {
   const MedicationCounterContent({
-    required this.count,
+    required this.medicationLabel,
+    required this.medicationCount,
     required this.onScan,
     required this.prescriptionController,
     required this.eanController,
@@ -18,8 +19,9 @@ class MedicationCounterContent extends StatelessWidget {
     super.key,
   });
 
-  final int count;
-  final VoidCallback onScan;
+  final String medicationLabel;
+  final int medicationCount;
+  final VoidCallback? onScan;
   final TextEditingController prescriptionController;
   final TextEditingController eanController;
   final GlobalKey<FormState> formKey;
@@ -31,15 +33,10 @@ class MedicationCounterContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('MedicationCounterContent: build — $count');
+    debugPrint('MedicationCounterContent: build — $medicationCount');
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final medicationLabel = switch (count) {
-      0 => 'Nenhum medicamento lido',
-      1 => '1 medicamento lido',
-      _ => '$count medicamentos lidos',
-    };
     return MediFlowContentCard(
       child: Form(
         key: formKey,
@@ -109,7 +106,7 @@ class MedicationCounterContent extends StatelessWidget {
               container: true,
               liveRegion: true,
               label: 'Quantidade de medicamentos lidos',
-              value: '$count',
+              value: '$medicationCount',
               child: ExcludeSemantics(
                 child: Text(medicationLabel, style: theme.textTheme.titleMedium),
               ),

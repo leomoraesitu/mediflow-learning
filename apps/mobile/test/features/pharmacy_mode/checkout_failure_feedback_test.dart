@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 
 void main() {
@@ -43,9 +44,8 @@ void main() {
     await tester.tap(find.text('Tentar novamente'));
     await tester.pump();
 
-    expect(cubit.state.status, CheckoutStatus.creatingPayment);
-    expect(cubit.state.retryTargetStatus, isNull);
-    expect(cubit.state.statusMessage, isNull);
+    expect(cubit.state.canCreatePayment, isTrue);
+    expect(cubit.state.feedback, const NoFeedback());
   });
   testWidgets('shows a permanent failure without retry action', (tester) async {
     final cubit = CheckoutCubit(

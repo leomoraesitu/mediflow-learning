@@ -8,25 +8,28 @@ Até a Aula 28, a aplicação passou a iniciar em uma tela de benefícios com sa
 
 A composição atual separa estado, apresentação e design system:
 
+- `main.dart` ficou restrito ao composition root: `main()` e `MainApp`. As telas vivem em `features/*/presentation/` desde a Aula 50;
 - `MainApp` configura o `MaterialApp`, aplica o tema global e define `BenefitsHomePage` como tela inicial;
 - `BenefitsHomePage` apresenta o saldo fictício, cria a sessão inicial e fornece `CheckoutCubit` ao Modo Farmácia com `BlocProvider`;
 - `PharmacyModePage` permanece como `StatefulWidget` para coordenar recursos ligados ao ciclo de vida da rota;
 - `_PharmacyModePageState` mantém a `GlobalKey<FormState>` e os controllers da receita e do EAN durante o ciclo de vida da rota, mas não armazena mais o contador;
-- `CheckoutCubit` mantém `CheckoutSession` como snapshot do fluxo, coordena os contratos de repositório e delega todas as transições para `CheckoutStateMachine`;
+- `CheckoutCubit` é o ViewModel: mantém `CheckoutSession` como campo **privado**, coordena os contratos de repositório, delega todas as transições para `CheckoutStateMachine` e emite `CheckoutViewState`;
+- `CheckoutViewState` carrega decisões já tomadas (`canSubmit`, `canConfirmPayment`, `medicationLabel`, `feedback`) com igualdade de valor; `CheckoutViewState.fromSession` é o único ponto que conhece o domínio;
+- `CheckoutFeedback` é uma hierarquia selada — `NoFeedback`, `SuccessFeedback`, `RecoverableFailure`, `PermanentFailure` — renderizada por `switch` exaustivo;
 - `CheckoutSessionSnapshot` converte a sessão entre o domínio e uma representação formada por mapas, listas e valores compatíveis com JSON;
 - `CheckoutSessionStorage` define as operações assíncronas `save`, `load` e `clear`; `InMemoryCheckoutSessionStorage` e `DriftCheckoutSessionStorage` oferecem implementações substituíveis;
 - `CheckoutDatabase` concentra o schema Drift e permite abrir SQLite em memória nos testes ou `mediflow_checkout.sqlite` no dispositivo;
 - `DemoPrescriptionRepository`, `DemoMedicationRepository` e `DemoCheckoutRepository` fornecem respostas locais e determinísticas aos contratos exigidos pelo Cubit;
-- `BlocConsumer<CheckoutCubit, CheckoutSession>` observa as emissões, reconstrói a região de conteúdo e executa efeitos pontuais da interface;
-- `BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>` seleciona somente a etapa e o rótulo usados pelo indicador de progresso;
-- um segundo `BlocSelector` observa somente o status, a mensagem e o identificador remoto necessários aos feedbacks de falha e sucesso;
-- `MedicationCounterContent` continua como `StatelessWidget` e recebe do `builder` o contador, os callbacks disponíveis para o status atual, os controllers e a chave do formulário;
+- `BlocConsumer<CheckoutCubit, CheckoutViewState>` observa as emissões, reconstrói a região de conteúdo e executa efeitos pontuais da interface;
+- um `BlocSelector` seleciona somente a etapa, o total e o rótulo usados pelo indicador de progresso;
+- um segundo `BlocSelector` observa somente o `feedback`, que é um objeto único com igualdade de valor;
+- `MedicationCounterContent` continua como `StatelessWidget` e recebe do `builder` o rótulo e a contagem já prontos, os callbacks disponíveis para a etapa atual, os controllers e a chave do formulário;
 - `CheckoutProgressIndicator` recebe do selector a etapa atual e o rótulo, além do total fixo de quatro etapas, para apresentar o progresso do checkout;
 - `AppTheme` centraliza o `ThemeData`, o Material 3 e o `ColorScheme` do aplicativo;
 - `AppSpacing` oferece uma escala compartilhada de espaçamentos;
 - `MediFlowContentCard` encapsula largura máxima, margem, padding e rolagem vertical.
 
-O contador não possui mais estado independente no fluxo em execução. A ação de leitura cria um `Medication` sintético e usa `context.read<CheckoutCubit>()` para solicitar a transição sem assinar a página inteira às mudanças. `scanMedication` envia `MedicationScanned` à `CheckoutStateMachine`, que produz outro snapshot da sessão ainda em `collectingMedication`. Quando `emit()` publica essa sessão, o `builder` do `BlocConsumer` deriva o contador de `session.medications.length` e entrega o valor atualizado a `MedicationCounterContent`. O `listener` reage à mesma emissão para executar os efeitos que não pertencem à árvore declarativa. Os widgets visuais recuperam cores e tipografia do tema mais próximo com `Theme.of(context)`, sem depender diretamente de valores de marca espalhados pela interface.
+O contador não possui mais estado independente no fluxo em execução. A ação de leitura entrega o EAN digitado ao `CheckoutCubit` com `context.read<CheckoutCubit>()`; quem constrói o `Medication` é o ViewModel, porque a View não importa mais `checkout_domain`. `scanMedication` envia `MedicationScanned` à `CheckoutStateMachine`, que produz outro snapshot da sessão ainda em `collectingMedication`. Quando `emit()` publica o estado de visão derivado dessa sessão, o `builder` do `BlocConsumer` entrega o rótulo e a contagem já prontos a `MedicationCounterContent`. O `listener` reage à mesma emissão para executar os efeitos que não pertencem à árvore declarativa. Os widgets visuais recuperam cores e tipografia do tema mais próximo com `Theme.of(context)`, sem depender diretamente de valores de marca espalhados pela interface.
 
 O `CheckoutCubit` atua como camada de coordenação entre o aplicativo e o domínio. Ele consulta os repositórios, converte resultados esperados do negócio em eventos de falha permanente, transforma falhas técnicas de criação e confirmação em falhas recuperáveis e delega a evolução da sessão à `CheckoutStateMachine`. A etapa interrompida e o identificador remoto são preservados para permitir retry sem recriar o pagamento. Depois de cada operação assíncrona, o Cubit verifica `isClosed` antes de emitir outro estado.
 
@@ -268,6 +271,26 @@ A tolerância de 3% fica bem acima do ruído e muito abaixo do sinal. Ela só é
 O Flutter escreve as imagens de comparação em `test/failures/` — a gerada, a de referência e o diff isolado. **Olhe o diff antes de decidir.** Regravar com `flutter test --update-goldens` é para mudança intencional; para regressão, o certo é consertar o código.
 
 `test/failures/` está no `.gitignore`: é artefato de depuração, não histórico.
+
+### A camada de apresentação (Aulas 50 e 51)
+
+A Aula 50 moveu as quatro telas de `main.dart` para `features/*/presentation/`, sem alterar comportamento — o diff dos nove testes afetados conteve exclusivamente linhas de `import`, e a contagem de testes foi a mesma antes e depois.
+
+A Aula 51 fez o `CheckoutCubit` parar de expor `CheckoutSession`. A decisão, as alternativas recusadas e os limites estão em [`docs/adr/0002-presentation-layer-boundary.md`](../../docs/adr/0002-presentation-layer-boundary.md). O resumo operacional:
+
+- a View não importa `checkout_domain`, e por isso `scanMedication` recebe `String`, `submitPrescription` recebe `String` e `checkEligibility` não recebe nada;
+- as cinco regras de habilitação, a pluralização e os três ramos de feedback saíram de `build()` e viraram campos de `CheckoutViewState`;
+- `CheckoutViewState` tem igualdade de valor, então a supressão de emissões repetidas do `Cubit` passou a atuar — antes nunca atuava, porque `CheckoutSession` não declara `==`.
+
+#### Como isso é verificado
+
+Substituindo o `==` de `CheckoutViewState` por identidade, um único teste fica vermelho: `does not emit again when a transition produces an identical view state`. Os outros treze do arquivo continuam verdes. Isso é o que torna esse teste o único que mede a decisão — e o que impede que ela seja desfeita por engano.
+
+Com `CheckoutSession` privada, os testes deixaram de espiar estado interno. O EAN informado e a referência da receita são verificados pelo que chegou aos repositórios, usando fakes que registram o argumento recebido.
+
+#### Limite conhecido
+
+`canScan` é constante `true`, reproduzindo o comportamento anterior. É uma falha latente: `MedicationScanned` só tem transição a partir de `collectingMedication`, e o botão habilitado em `checkingEligibility` leva a `InvalidCheckoutTransitionException`. Está marcado com comentário no ponto exato de `checkout_view_state.dart`.
 
 ## Execução
 

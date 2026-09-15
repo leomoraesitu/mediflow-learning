@@ -43,8 +43,7 @@ void main() {
     await tester.tap(find.text('Validar compra'));
     await tester.pumpAndSettle();
 
-    expect(cubit.state.prescription?.reference, 'RX-001');
-    expect(cubit.state.status, CheckoutStatus.checkingEligibility);
+    expect(cubit.state.canCheckEligibility, isTrue);
     expect(find.text('Etapa 2 de 4: Validação da compra'), findsOneWidget);
   });
   testWidgets('keeps checkout submission disabled without medications', (tester) async {

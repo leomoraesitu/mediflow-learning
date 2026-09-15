@@ -8,13 +8,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 
-final class CheckoutCubit extends Cubit<CheckoutSession> {
+/// O ViewModel do Modo Farmácia.
+///
+/// Emite `CheckoutViewState`, não `CheckoutSession`: a sessão de domínio é
+/// estado interno e nunca atravessa para a View. Isso mantém as regras de
+/// apresentação de um lado só da fronteira, e é o que permite à tela não
+/// importar `checkout_domain`.
+final class CheckoutCubit extends Cubit<CheckoutViewState> {
   final CheckoutStateMachine _stateMachine;
   final PrescriptionRepository _prescriptionRepository;
   final MedicationRepository _medicationRepository;
   final CheckoutRepository _checkoutRepository;
   final CheckoutSessionStorage? _storage;
+
+  /// A sessão de domínio, privada por definição: é dela que todo estado de
+  /// visão é derivado, e é ela que vai para o armazenamento.
+  CheckoutSession _session;
 
   static Future<CheckoutCubit> restore({
     required CheckoutSession fallbackSession,
@@ -48,10 +59,12 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
        _medicationRepository = medicationRepository,
        _checkoutRepository = checkoutRepository,
        _storage = storage,
-       super(initialSession);
+       _session = initialSession,
+       super(CheckoutViewState.fromSession(initialSession));
 
   Future<void> _emitPersisted(CheckoutSession session) async {
-    emit(session);
+    _session = session;
+    emit(CheckoutViewState.fromSession(session));
 
     final storage = _storage;
 
@@ -60,18 +73,23 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     }
   }
 
-  Future<void> scanMedication(Medication medication) async {
+  /// Recebe o EAN, não um `Medication`: a View não constrói domínio.
+  Future<void> scanMedication(String ean) async {
     final nextSession = _stateMachine.transition(
-      session: state,
-      event: MedicationScanned(medication: medication),
+      session: _session,
+      event: MedicationScanned(
+        medication: Medication(ean: ean, name: 'Medicamento demonstrativo', unitPriceInCents: 2500),
+      ),
     );
 
     await _emitPersisted(nextSession);
   }
 
-  Future<void> submitPrescription(Prescription prescription) async {
+  Future<void> submitPrescription(String reference) async {
+    final prescription = Prescription(reference: reference);
+
     final nextSession = _stateMachine.transition(
-      session: state,
+      session: _session,
       event: PrescriptionSubmitted(prescription: prescription),
     );
 
@@ -84,7 +102,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     if (!isValid) {
       await _emitPersisted(
         _stateMachine.transition(
-          session: state,
+          session: _session,
           event: const CheckoutFailed(errorMessage: 'Receita inválida.', recoverable: false),
         ),
       );
@@ -92,19 +110,25 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     }
 
     await _emitPersisted(
-      _stateMachine.transition(session: state, event: const PrescriptionValidated()),
+      _stateMachine.transition(session: _session, event: const PrescriptionValidated()),
     );
   }
 
-  Future<void> checkEligibility(Medication medication) async {
-    final isEligible = await _medicationRepository.checkEligibility(medication);
+  /// Sem parâmetro: quem escolhe o medicamento verificado é o ViewModel, a
+  /// partir da própria sessão. Antes essa escolha vivia no `build()` da tela.
+  Future<void> checkEligibility() async {
+    final medications = _session.medications;
+
+    if (medications.isEmpty) return;
+
+    final isEligible = await _medicationRepository.checkEligibility(medications.first);
 
     if (isClosed) return;
 
     if (!isEligible) {
       await _emitPersisted(
         _stateMachine.transition(
-          session: state,
+          session: _session,
           event: const CheckoutFailed(
             errorMessage: 'Medicamento não elegível.',
             recoverable: false,
@@ -115,7 +139,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     }
 
     await _emitPersisted(
-      _stateMachine.transition(session: state, event: const EligibilityConfirmed()),
+      _stateMachine.transition(session: _session, event: const EligibilityConfirmed()),
     );
   }
 
@@ -123,13 +147,13 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
     late final String remoteCheckoutId;
 
     try {
-      remoteCheckoutId = await _checkoutRepository.create(state);
+      remoteCheckoutId = await _checkoutRepository.create(_session);
     } on Exception {
       if (isClosed) return;
 
       await _emitPersisted(
         _stateMachine.transition(
-          session: state,
+          session: _session,
           event: const CheckoutFailed(
             errorMessage: 'Falha ao criar o checkout.',
             recoverable: true,
@@ -143,14 +167,14 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
     await _emitPersisted(
       _stateMachine.transition(
-        session: state,
+        session: _session,
         event: PaymentCreated(remoteCheckoutId: remoteCheckoutId),
       ),
     );
   }
 
   Future<void> confirmPayment() async {
-    final remoteCheckoutId = state.remoteCheckoutId;
+    final remoteCheckoutId = _session.remoteCheckoutId;
 
     if (remoteCheckoutId == null) return;
 
@@ -163,7 +187,7 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
       await _emitPersisted(
         _stateMachine.transition(
-          session: state,
+          session: _session,
           event: const CheckoutFailed(
             errorMessage: 'Falha ao confirmar o checkout.',
             recoverable: true,
@@ -175,10 +199,14 @@ final class CheckoutCubit extends Cubit<CheckoutSession> {
 
     if (isClosed || remoteCheckout.status != CheckoutStatus.paid) return;
 
-    await _emitPersisted(_stateMachine.transition(session: state, event: const PaymentConfirmed()));
+    await _emitPersisted(
+      _stateMachine.transition(session: _session, event: const PaymentConfirmed()),
+    );
   }
 
   Future<void> retry() async {
-    await _emitPersisted(_stateMachine.transition(session: state, event: const RetryRequested()));
+    await _emitPersisted(
+      _stateMachine.transition(session: _session, event: const RetryRequested()),
+    );
   }
 }

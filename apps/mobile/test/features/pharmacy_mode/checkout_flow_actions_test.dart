@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 
 void main() {
@@ -42,7 +43,7 @@ void main() {
     await tester.tap(find.text('Verificar elegibilidade'));
     await tester.pumpAndSettle();
 
-    expect(cubit.state.status, CheckoutStatus.creatingPayment);
+    expect(cubit.state.canCreatePayment, isTrue);
     expect(find.text('Etapa 3 de 4: Criação do pagamento'), findsOneWidget);
   });
   testWidgets('creates the remote checkout from the payment step', (tester) async {
@@ -80,8 +81,7 @@ void main() {
     await tester.tap(find.text('Criar pagamento'));
     await tester.pumpAndSettle();
 
-    expect(cubit.state.status, CheckoutStatus.awaitingConfirmation);
-    expect(cubit.state.remoteCheckoutId, 'demo-checkout-001');
+    expect(cubit.state.canConfirmPayment, isTrue);
     expect(find.text('Etapa 4 de 4: Confirmação do pagamento'), findsOneWidget);
   });
   testWidgets('confirms the remote checkout from the awaiting confirmation step', (tester) async {
@@ -109,8 +109,7 @@ void main() {
 
     await cubit.createCheckout();
 
-    expect(cubit.state.status, CheckoutStatus.awaitingConfirmation);
-    expect(cubit.state.remoteCheckoutId, 'demo-checkout-001');
+    expect(cubit.state.canConfirmPayment, isTrue);
 
     addTearDown(cubit.close);
 
@@ -126,8 +125,7 @@ void main() {
     await tester.tap(find.text('Confirmar pagamento'));
     await tester.pumpAndSettle();
 
-    expect(cubit.state.status, CheckoutStatus.paid);
-    expect(cubit.state.remoteCheckoutId, 'demo-checkout-001');
+    expect(cubit.state.feedback, const SuccessFeedback('demo-checkout-001'));
     expect(find.text('Etapa 4 de 4: Confirmação do pagamento'), findsOneWidget);
   });
 }

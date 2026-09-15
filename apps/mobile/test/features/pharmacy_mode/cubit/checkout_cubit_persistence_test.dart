@@ -1,6 +1,7 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_storage.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
@@ -40,9 +41,11 @@ void main() {
 
     addTearDown(cubit.close);
 
-    expect(cubit.state.id, 'persisted-session');
-    expect(cubit.state.status, CheckoutStatus.creatingPayment);
-    expect(cubit.state.medications, hasLength(1));
+    // O estado de visão só pode estar assim se o instantâneo foi carregado:
+    // a sessão de reserva começa em `collectingMedication` e sem medicamentos.
+    expect(cubit.state.canCreatePayment, isTrue);
+    expect(cubit.state.currentStep, 3);
+    expect(cubit.state.medicationCount, 1);
   });
   test('persists a new checkout snapshot after scanning medication', () async {
     final storage = InMemoryCheckoutSessionStorage();
@@ -66,13 +69,7 @@ void main() {
 
     addTearDown(cubit.close);
 
-    await cubit.scanMedication(
-      const Medication(
-        ean: '7891000000011',
-        name: 'Medicamento demonstrativo',
-        unitPriceInCents: 2500,
-      ),
-    );
+    await cubit.scanMedication('7891000000011');
 
     final persistedSnapshot = await storage.load();
 
@@ -103,7 +100,7 @@ void main() {
 
     addTearDown(cubit.close);
 
-    await cubit.submitPrescription(const Prescription(reference: 'RX-001'));
+    await cubit.submitPrescription('RX-001');
 
     final persistedSnapshot = await storage.load();
 
@@ -161,7 +158,8 @@ void main() {
 
     expect(persistedSnapshot, isNotNull);
     expect(persistedSnapshot!.toDomain().status, CheckoutStatus.creatingPayment);
-    expect(persistedSnapshot.toDomain().status, cubit.state.status);
+    // O que foi gravado e o que foi emitido descrevem a mesma sessão.
+    expect(CheckoutViewState.fromSession(persistedSnapshot.toDomain()), cubit.state);
   });
 }
 
