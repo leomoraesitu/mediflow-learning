@@ -108,12 +108,10 @@ final class CheckoutViewState {
       stepLabel: progress.label,
       medicationLabel: _medicationLabelFor(medicationCount),
       medicationCount: medicationCount,
-      // Hoje o botão de leitura é sempre habilitado, e isto reproduz esse
-      // comportamento sem alterá-lo. É também uma falha latente: ler um
-      // medicamento fora de `collectingMedication` não tem transição na
-      // máquina de estados e lança `InvalidCheckoutTransitionException`.
-      // Corrigir aqui muda comportamento, então fica como decisão própria.
-      canScan: true,
+      // `MedicationScanned` só tem transição a partir de
+      // `collectingMedication`; habilitar a leitura fora dela levaria a
+      // `InvalidCheckoutTransitionException`.
+      canScan: session.status == CheckoutStatus.collectingMedication,
       canSubmit: session.status == CheckoutStatus.collectingMedication && medicationCount > 0,
       canCheckEligibility:
           session.status == CheckoutStatus.checkingEligibility && medicationCount > 0,

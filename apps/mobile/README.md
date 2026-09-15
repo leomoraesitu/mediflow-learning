@@ -288,9 +288,15 @@ Substituindo o `==` de `CheckoutViewState` por identidade, um único teste fica 
 
 Com `CheckoutSession` privada, os testes deixaram de espiar estado interno. O EAN informado e a referência da receita são verificados pelo que chegou aos repositórios, usando fakes que registram o argumento recebido.
 
-#### Limite conhecido
+### O dono do Cubit e a ação inválida (Aula 52)
 
-`canScan` é constante `true`, reproduzindo o comportamento anterior. É uma falha latente: `MedicationScanned` só tem transição a partir de `collectingMedication`, e o botão habilitado em `checkingEligibility` leva a `InvalidCheckoutTransitionException`. Está marcado com comentário no ponto exato de `checkout_view_state.dart`.
+`BlocProvider.value` não fecha o bloc que recebe — ele existe para o caso em que outra pessoa é dona. Não havia outra pessoa: o `CheckoutCubit` nascia num callback de navegação e cada abertura do Modo Farmácia deixava um para trás, com um `DriftCheckoutSessionStorage` dentro.
+
+`BenefitsHomePage._openPharmacyMode` agora resolve o `restore()` antes de navegar, empurra a rota com `await`, e fecha o cubit quando ela é desempilhada. Quem cria, fecha, no mesmo método. Um `context.mounted` cobre o caso em que a tela sai antes de o `restore()` resolver.
+
+`canScan` deixou de ser constante `true`: `MedicationScanned` só tem transição a partir de `collectingMedication`, e o botão habilitado fora dela levava a `InvalidCheckoutTransitionException`.
+
+Os dois têm teste, e os dois foram verificados por quebra: removendo o `close()`, só `fecha o CheckoutCubit ao sair do Modo Farmácia` fica vermelho; devolvendo `canScan: true`, só `blocks scanning once the checkout left medication collection`.
 
 ## Execução
 

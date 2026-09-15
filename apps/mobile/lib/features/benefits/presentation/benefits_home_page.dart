@@ -30,10 +30,10 @@ class BenefitsHomePage extends StatelessWidget {
     this.hasPendingSync = const Stream<bool>.empty(),
   });
 
-  void _openPharmacyMode(BuildContext context) {
+  Future<void> _openPharmacyMode(BuildContext context) async {
     final storage = DriftCheckoutSessionStorage(database);
 
-    final cubitFuture = CheckoutCubit.restore(
+    final cubit = await CheckoutCubit.restore(
       fallbackSession: CheckoutSession(
         id: 'session-001',
         availableBalanceInCents: (availableBalance * 100).round(),
@@ -47,21 +47,21 @@ class BenefitsHomePage extends StatelessWidget {
       medicationRepository: medicationRepository,
       checkoutRepository: checkoutRepository,
     );
-    Navigator.of(context).push(
+    if (!context.mounted) {
+      await cubit.close();
+      return;
+    }
+    // `BlocProvider.value` não fecha o que recebe — por isso o fechamento é
+    // explícito logo abaixo. `push` completa quando a rota é desempilhada,
+    // então criação e destruição ficam simétricas, no mesmo método.
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) {
-          return FutureBuilder<CheckoutCubit>(
-            future: cubitFuture,
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
-              }
-              return BlocProvider.value(value: snapshot.data!, child: const PharmacyModePage());
-            },
-          );
+          return BlocProvider.value(value: cubit, child: const PharmacyModePage());
         },
       ),
     );
+    await cubit.close();
   }
 
   @override

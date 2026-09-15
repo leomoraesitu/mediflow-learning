@@ -26,6 +26,22 @@ void main() {
     });
   });
   group('action availability', () {
+    test('allows scanning while collecting medication', () {
+      final viewState = CheckoutViewState.fromSession(_session());
+
+      expect(viewState.canScan, isTrue);
+    });
+
+    test('blocks scanning once the checkout left medication collection', () {
+      // `MedicationScanned` não tem transição a partir daqui: o botão
+      // habilitado levaria a `InvalidCheckoutTransitionException`.
+      final viewState = CheckoutViewState.fromSession(
+        _session(status: CheckoutStatus.checkingEligibility, medicationCount: 1),
+      );
+
+      expect(viewState.canScan, isFalse);
+    });
+
     test('allows submitting only while collecting medication with at least one item', () {
       final session = _session(status: CheckoutStatus.collectingMedication, medicationCount: 1);
       final viewState = CheckoutViewState.fromSession(session);
