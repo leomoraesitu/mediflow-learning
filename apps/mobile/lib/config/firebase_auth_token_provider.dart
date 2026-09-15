@@ -32,16 +32,48 @@ final class FirebaseAuthTokenProvider {
     }
   }
 
+  /// A recuperação depende de *quem* era o usuário, e é por isso que a
+  /// identidade precisou atravessar a costura na Aula 53.
+  ///
+  /// Para uma sessão anônima, criar outra é a resposta certa: não há nada a
+  /// perder, e o app volta a funcionar sozinho. Para uma conta, é a resposta
+  /// errada — trocaria o usuário em silêncio, e os eventos pendentes no
+  /// outbox de quem estava logado passariam a ser enviados sob uma
+  /// identidade nova, que o backend aceitaria como dona deles.
   Future<String?> _recoverIdentity() async {
+    // Lido antes do `signOut`, e não por estilo: depois dele `currentUser` é
+    // sempre `null`, o que cairia no ramo anônimo. A política inteira
+    // voltaria a ser a anterior sem nada quebrar na compilação.
+    final user = _gateway.currentUser;
+
     try {
-      // O signOut é obrigatório, não defensivo: `signInAnonymously`
+      // O signOut serve a dois propósitos, um por ramo.
+      //
+      // No anônimo ele é obrigatório, não defensivo: `signInAnonymously`
       // devolve o usuário anônimo já autenticado em vez de criar outro,
       // então, sem descartar a sessão inválida antes, a renovação
       // retornaria exatamente a credencial que o backend acabou de
       // recusar — e o evento do outbox ficaria preso para sempre.
+      //
+      // Na conta ele é o próprio desfecho: não há entrada depois dele.
       await _gateway.signOut();
-      return await _gateway.signInAnonymously();
+
+      if (user == null || user.isAnonymous) {
+        return await _gateway.signInAnonymously();
+      }
+
+      // Conta real sem credencial válida: sessão encerrada, e cabe a quem
+      // está de fora pedir que o usuário entre de novo.
+      //
+      // Devolver `null` tem uma consequência que esta aula não resolve: o
+      // interceptor deixa a requisição sair *sem* cabeçalho `Authorization`
+      // (`checkout_api_client.dart:81-86`), o que garante 401 — e, com os
+      // gatilhos do outbox, um laço. É o assunto da Aula 56.
+      return null;
     } on AuthGatewayException {
+      // Inclui o caso em que o próprio `signOut` falhou. Para o chamador o
+      // resultado é o mesmo `null`, mas a sessão local pode continuar de pé:
+      // mais um caminho que desemboca no laço descrito acima.
       return null;
     }
   }

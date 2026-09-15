@@ -161,7 +161,7 @@ Na Aula 41, esse mesmo teste revelou-se falho pelo lado do oráculo. Ele lia o `
 
 O primeiro deploy real, na Aula 40, expôs um modo de falha que sete aulas de emulador esconderam: com uma credencial emitida pelo emulador em cache e o Firebase real do outro lado, `getIdToken()` lança **antes** de qualquer requisição sair. Sem requisição não há resposta, sem resposta não há `401`, e a recuperação da Aula 36 — acionada exclusivamente por esse status — nunca disparava. Falha silenciosa, permanente e sem registro no servidor.
 
-A correção tem duas partes. A primeira é uma costura: `lib/config/auth_gateway.dart` declara `AuthGateway`, com três operações que falam apenas `String?`, e `AuthGatewayException`, o tipo do projeto para falhas de autenticação. O arquivo não tem import nenhum. `lib/config/firebase_auth_gateway.dart` implementa a interface e traduz `FirebaseAuthException` para o tipo do projeto, tornando-se o único arquivo do aplicativo, fora do `main.dart`, que conhece `firebase_auth` — propriedade verificável com um `grep`.
+A correção tem duas partes. A primeira é uma costura: `lib/config/auth_gateway.dart` declara `AuthGateway`, que na época tinha três operações falando apenas `String?` (a Aula 53 o ampliou), e `AuthGatewayException`, o tipo do projeto para falhas de autenticação. O arquivo não tem import nenhum. `lib/config/firebase_auth_gateway.dart` implementa a interface e traduz `FirebaseAuthException` para o tipo do projeto, tornando-se o único arquivo do aplicativo, fora do `main.dart`, que conhece `firebase_auth` — propriedade verificável com um `grep`.
 
 Nenhum método da interface devolve `User`. Se devolvesse, o fake precisaria imitar uma classe do plugin e a costura não cortaria nada. É por isso que `currentUserToken()` absorve o `currentUser == null` e devolve `null`: "não há usuário" é detalhe do SDK, não decisão de política.
 
@@ -297,6 +297,48 @@ Com `CheckoutSession` privada, os testes deixaram de espiar estado interno. O EA
 `canScan` deixou de ser constante `true`: `MedicationScanned` só tem transição a partir de `collectingMedication`, e o botão habilitado fora dela levava a `InvalidCheckoutTransitionException`.
 
 Os dois têm teste, e os dois foram verificados por quebra: removendo o `close()`, só `fecha o CheckoutCubit ao sair do Modo Farmácia` fica vermelho; devolvendo `canScan: true`, só `blocks scanning once the checkout left medication collection`.
+
+### A identidade atravessa a costura (Aula 53)
+
+`AuthGateway` sabia obter token e não sabia dizer quem era o usuário: nenhum `uid` cruzava a fronteira. Enquanto toda sessão era anônima isso bastava. Com contas, deixa de bastar — e não por conveniência, mas porque a política de recuperação de identidade **depende** de quem era o usuário.
+
+O contrato ganhou `currentUser`, `authStateChanges()`, `signInWithEmail` e `registerWithEmail`, e um tipo próprio:
+
+```dart
+final class AuthUser {
+  final String uid;
+  final String? email;
+  final bool isAnonymous;
+}
+```
+
+`AuthUser` não é o `User` do `firebase_auth`, pelo mesmo motivo de sempre: se fosse, o fake precisaria imitar uma classe do plugin e a costura não cortaria nada. `isAnonymous` é campo explícito em vez de derivado de `email == null`, porque autenticação por telefone produz conta real sem e-mail — e é essa flag que decide a política.
+
+`currentUser` é **síncrono** de propósito. A política precisa saber quem era o usuário antes de encerrar a sessão, e uma leitura assíncrona abriria janela para o estado mudar entre decidir e agir.
+
+#### A política deixou de ser universal
+
+`_recoverIdentity()` ramifica: sessão anônima cria outra; conta encerra a sessão e devolve `null`, sem inventar identidade.
+
+A ordem no código é obrigatória e não é evidente — `currentUser` é lido **antes** do `signOut()`, porque depois dele é sempre `null`, o que cairia no ramo anônimo e restauraria a política antiga em silêncio.
+
+#### Como isso é verificado
+
+Três sabotagens, um único vermelho em cada, sempre o mesmo teste:
+
+| Sabotagem | Vermelho |
+| --- | --- |
+| `isAnonymous` sempre verdadeiro | `ends the session without a new identity when a real account is rejected` |
+| ler `currentUser` depois do `signOut` | idem |
+| remover o ramo (conta volta a criar anônimo) | idem |
+
+A asserção que carrega o teste é `expect(fake.signInCalls, 0)`. `token == null` sozinho não serve: `null` é também o que sai quando a recuperação falha, e só a contagem separa "encerrou a sessão de propósito" de "tentou criar identidade nova e não conseguiu".
+
+O `FakeAuthGateway` cresceu junto — `currentUserValue` público para montar os dois ramos, um `StreamController.broadcast` de verdade para `authStateChanges`, e erro e contador nos métodos novos. `signInAnonymously` e `signOut` passaram a atualizar o usuário atual, como o Firebase real faz: um fake que diverge do real deixa passar teste verde sobre comportamento que não existiria.
+
+#### Dívida conhecida
+
+Devolver `null` para conta rejeitada faz a requisição sair sem `Authorization` (`checkout_api_client.dart:81-86`), o que garante `401` e, com os gatilhos do outbox, um laço. Está registrado na [ADR 0001](../../docs/adr/0001-offline-first-scope-and-limits.md) e é o assunto da Aula 56.
 
 ## Execução
 

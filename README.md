@@ -31,7 +31,7 @@ mediflow-learning/
 | Diretório | Responsabilidade |
 | --- | --- |
 | `apps/mobile` | Aplicativo Flutter Android e futuro fluxo principal do Modo Farmácia. |
-| `apps/ops_web` | Painel operacional Flutter Web somente leitura. Será criado na Aula 36. |
+| `apps/ops_web` | Painel operacional Flutter Web somente leitura. **Ainda não construído** — existe apenas como diretório e README. |
 | `packages/checkout_domain` | Modelos, regras e transições do checkout em Dart puro, compartilháveis entre os clientes. |
 | `functions` | Backend sintético e contratos REST. Possui ciclo de ferramentas próprio e não participa do Pub Workspace. |
 | `docs` | Decisões arquiteturais, contratos, diagramas e documentação do projeto. |
@@ -45,6 +45,8 @@ Neste momento, `apps/mobile` e `packages/checkout_domain` participam do workspac
 O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio e Drift. Essa fronteira permite testar as regras do checkout rapidamente e reutilizá-las em mais de um cliente, seguindo a separação de responsabilidades discutida no [guia oficial de arquitetura do Flutter](https://docs.flutter.dev/app-architecture/guide).
 
 ## Estado atual
+
+> A lista abaixo descreve o repositório até a Aula 28. O trabalho posterior é registrado no README de cada pacote — [`apps/mobile`](apps/mobile/README.md), [`packages/checkout_domain`](packages/checkout_domain/README.md), [`functions`](functions/README.md) — e as decisões de arquitetura ficam em [`docs/adr`](docs/README.md). Até a Aula 53, o repositório acumulou: backend próprio publicado em Cloud Functions com autenticação e autorização por propriedade, outbox local com idempotência ponta a ponta, três gatilhos de sincronização, indicador reativo de pendência, testes de golden, portão de qualidade na CI, camada de apresentação com estado de visão próprio, e uma costura de autenticação que distingue sessão anônima de conta real.
 
 Até a Aula 28, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão, os feedbacks de falha e sucesso, as ações de avanço do checkout, a representação serializável da sessão, a fronteira assíncrona de armazenamento e a persistência local com Drift foram criados:
 
