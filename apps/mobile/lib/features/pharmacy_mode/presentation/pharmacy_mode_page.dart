@@ -19,6 +19,7 @@ class PharmacyModePage extends StatefulWidget {
 
 class _PharmacyModePageState extends State<PharmacyModePage> {
   final _formKey = GlobalKey<FormState>();
+  final _prescriptionFieldKey = GlobalKey<FormFieldState<String>>();
   final _prescriptionController = TextEditingController();
   final _eanController = TextEditingController();
 
@@ -35,25 +36,23 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
   }
 
   Future<void> _submitPrescription() async {
-    final reference = _prescriptionController.text.trim();
+    // Só o campo da receita, e não `_formKey.currentState.validate()`: o
+    // formulário inteiro inclui o EAN, que o `listener` limpa depois de cada
+    // leitura — validar tudo bloquearia a submissão no fluxo normal.
+    //
+    // A checagem antiga de `isEmpty` retornava em silêncio. Esta usa o mesmo
+    // `validator` do campo, então o usuário vê por que nada aconteceu.
+    final isValid = _prescriptionFieldKey.currentState?.validate() ?? false;
 
-    if (reference.isEmpty) {
+    if (!isValid) {
       return;
     }
 
-    await context.read<CheckoutCubit>().submitPrescription(reference);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    debugPrint('PharmacyModePage: initState');
+    await context.read<CheckoutCubit>().submitPrescription(_prescriptionController.text.trim());
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('PharmacyModePage: build');
-
     return Scaffold(
       appBar: AppBar(title: const Text('Modo Farmácia')),
       body: SafeArea(
@@ -137,6 +136,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                     prescriptionController: _prescriptionController,
                     eanController: _eanController,
                     formKey: _formKey,
+                    prescriptionFieldKey: _prescriptionFieldKey,
                     onFillDemoEan: _fillDemoEan,
                     onSubmit: state.canSubmit ? _submitPrescription : null,
                     onCheckEligibility: state.canCheckEligibility
@@ -160,7 +160,6 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
 
   @override
   void dispose() {
-    debugPrint('PharmacyModePage: dispose');
     _prescriptionController.dispose();
     _eanController.dispose();
     super.dispose();

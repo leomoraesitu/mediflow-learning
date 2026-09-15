@@ -11,6 +11,7 @@ class MedicationCounterContent extends StatelessWidget {
     required this.prescriptionController,
     required this.eanController,
     required this.formKey,
+    required this.prescriptionFieldKey,
     required this.onFillDemoEan,
     required this.onSubmit,
     required this.onCheckEligibility,
@@ -25,6 +26,7 @@ class MedicationCounterContent extends StatelessWidget {
   final TextEditingController prescriptionController;
   final TextEditingController eanController;
   final GlobalKey<FormState> formKey;
+  final GlobalKey<FormFieldState<String>> prescriptionFieldKey;
   final VoidCallback onFillDemoEan;
   final VoidCallback? onSubmit;
   final VoidCallback? onCheckEligibility;
@@ -33,7 +35,6 @@ class MedicationCounterContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('MedicationCounterContent: build — $medicationCount');
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -57,6 +58,7 @@ class MedicationCounterContent extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
             TextFormField(
+              key: prescriptionFieldKey,
               controller: prescriptionController,
               decoration: const InputDecoration(
                 labelText: 'Referência da receita',
