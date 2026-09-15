@@ -9,3 +9,4 @@ Todo exemplo documentado deve ser reproduzível com dados sintéticos e sem depe
 `adr/` reúne decisões de arquitetura registradas no momento em que foram tomadas, com o contexto e as consequências aceitas — não uma descrição do estado atual do código (isso é papel dos READMEs de cada package/app).
 
 - [0001 — Escopo e limites do offline-first no checkout](adr/0001-offline-first-scope-and-limits.md)
+- [0002 — A fronteira da camada de apresentação](adr/0002-presentation-layer-boundary.md)

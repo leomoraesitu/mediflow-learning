@@ -43,6 +43,8 @@ Quando as functions rodam sob o emulador, o Admin SDK detecta a variável `FIREB
 
 Autenticar responde "quem é você"; autorizar responde "o que você pode". Até a Aula 38 o backend só fazia a primeira: o `res.locals.user` preenchido pelo middleware nunca era lido por rota alguma, e qualquer usuário anônimo válido acessava o checkout de qualquer outro.
 
+O backend é indiferente a *como* a pessoa se autenticou. `verifyIdToken` devolve um `uid` tanto para sessão anônima quanto para conta com e-mail e senha, e a propriedade é checada contra o campo `userId` do documento em qualquer um dos casos. Por isso a Aula 53, que ensinou o aplicativo a distinguir os dois tipos de identidade, não exigiu mudança nenhuma aqui — e a Aula 54, que acrescenta telas de login, também não deve exigir.
+
 `POST /checkouts` passou a gravar o `uid` do criador no documento, e `GET /checkouts/:id` só entrega a quem gravou. A resposta **não** inclui esse campo: quem pede já sabe quem é, e expor o identificador interno sem que ninguém precise dele é custo sem ganho. O teste `keeps the request body intact after authentication` funciona como guardião permanente disso, porque compara a resposta com o payload enviado usando igualdade estrita.
 
 Duas decisões merecem registro por não serem óbvias.

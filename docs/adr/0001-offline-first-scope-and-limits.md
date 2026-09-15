@@ -179,6 +179,26 @@ Só um build temporário contendo apenas a fonte de ciclo de vida isolou o compo
 
 Portanto, **nas condições reproduzíveis aqui a retomada é redundante**. Ela existe para o que o emulador não reproduz: Doze, restrições agressivas de fabricante e permanência longa em segundo plano, onde a entrega do aviso de conectividade não é prometida. É rede de segurança, não caminho principal.
 
+### A recuperação deixou de ser universal (Aula 53)
+
+A costura da Aula 41 resolveu *como* recuperar identidade e assumiu, sem dizer, que só existia um tipo de identidade. `AuthGateway` falava apenas `String?`: nenhum `uid` atravessava, e por isso o aplicativo não tinha como perguntar **quem** era o usuário antes de decidir.
+
+Enquanto toda sessão era anônima, isso não custava nada. Trocar um anônimo por outro é seguro — não há nada a perder, e o app volta a funcionar sozinho. Com contas de verdade a mesma política vira defeito: `signOut()` seguido de `signInAnonymously()` troca o usuário em silêncio, e os eventos pendentes no outbox de quem estava logado passam a ser enviados sob uma identidade nova, que o backend aceita como dona deles.
+
+O contrato cresceu com `currentUser`, `authStateChanges()`, `signInWithEmail` e `registerWithEmail`, e um tipo `AuthUser` do projeto — `uid`, `email`, `isAnonymous` — que nunca é o `User` do plugin. `isAnonymous` é carregado explicitamente em vez de derivado de `email == null`: autenticação por telefone produz conta real sem e-mail, e é essa flag que decide a política.
+
+`_recoverIdentity()` passou a ramificar: sessão anônima cria outra; conta encerra a sessão e não inventa identidade nova.
+
+**Uma ordem no código é obrigatória e não é evidente.** `currentUser` precisa ser lido **antes** do `signOut()` — depois dele é sempre `null`, o que cairia no ramo anônimo e restauraria a política antiga sem quebrar compilação nem análise estática. É regressão que só a quebra dirigida encontra, e por isso existe um teste que a encontra: mover a leitura para depois do `signOut` derruba `ends the session without a new identity when a real account is rejected`, e só ele.
+
+#### A dívida que esta decisão cria
+
+Devolver `null` para uma conta rejeitada faz a requisição sair **sem** cabeçalho `Authorization` — `checkout_api_client.dart:81-86` só acrescenta o header quando o token não é nulo. Isso garante `401`, e com os três gatilhos de drenagem do outbox garante um laço: cada gatilho produz uma tentativa, cada tentativa produz `401`, cada `401` produz outra recuperação que termina em `null`.
+
+O mesmo desfecho vale quando o próprio `signOut()` falha: o chamador recebe `null` de qualquer forma, mas a sessão local pode continuar de pé.
+
+Fechar esse laço exige decidir o que o `OutboxSyncScheduler` faz quando não há ninguém autenticado, e é o assunto da Aula 56. Fica registrado aqui como dívida nomeada, e não como surpresa.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.
