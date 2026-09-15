@@ -1,6 +1,5 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 
 void main() {
@@ -124,6 +123,23 @@ void main() {
       expect((viewState.feedback as PermanentFailure).message, 'Terminal error');
     });
 
+    test('reports a permanent failure while maintenance is on', () {
+      // `maintenance` é o único status que sempre carrega mensagem, porque
+      // `MaintenanceDetected` a exige. Hoje ele cai no mesmo ramo de uma falha
+      // definitiva; a Aula 58 precisa reavaliar isso ao dar cor ao banner.
+      final viewState = CheckoutViewState.fromSession(
+        _session(
+          status: CheckoutStatus.maintenance,
+          statusMessage: 'O Modo Farmácia está temporariamente indisponível.',
+        ),
+      );
+
+      expect(
+        viewState.feedback,
+        const PermanentFailure('O Modo Farmácia está temporariamente indisponível.'),
+      );
+    });
+
     test('reports no success when the checkout is paid without a remote checkout id', () {
       final session = _session(status: CheckoutStatus.paid, remoteCheckoutId: null);
       final viewState = CheckoutViewState.fromSession(session);
@@ -132,12 +148,24 @@ void main() {
     });
   });
   group('progress', () {
-    test('carries the step and label produced by the progress selector', () {
-      final session = _session();
-      final viewState = CheckoutViewState.fromSession(session);
+    // Valores literais, e não `selectCheckoutProgress(session)`: comparar a
+    // saída com a função que a produz nunca discorda de si mesma. Sabotando o
+    // ramo padrão do seletor, a versão circular deste teste ficava verde.
+    test('opens on the first step while collecting medication', () {
+      final viewState = CheckoutViewState.fromSession(_session());
 
-      expect(viewState.currentStep, selectCheckoutProgress(session).currentStep);
-      expect(viewState.stepLabel, selectCheckoutProgress(session).label);
+      expect(viewState.currentStep, 1);
+      expect(viewState.totalSteps, 4);
+      expect(viewState.stepLabel, 'Leitura do medicamento');
+    });
+
+    test('reaches the last step once the payment is awaiting confirmation', () {
+      final viewState = CheckoutViewState.fromSession(
+        _session(status: CheckoutStatus.awaitingConfirmation, remoteCheckoutId: 'remote-001'),
+      );
+
+      expect(viewState.currentStep, 4);
+      expect(viewState.stepLabel, 'Confirmação do pagamento');
     });
   });
   group('equality', () {

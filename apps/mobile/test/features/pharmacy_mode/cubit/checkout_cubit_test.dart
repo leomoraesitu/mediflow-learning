@@ -29,22 +29,20 @@ void main() {
       ],
     );
 
-    blocTest<CheckoutCubit, CheckoutViewState>(
-      'builds the scanned medication from the informed ean',
-      build: () => _cubit(session: _session()),
-      act: (cubit) async {
-        // A View passa uma `String`; quem constrói o `Medication` é o Cubit.
-        await cubit.scanMedication('7891000000011');
-        await cubit.submitPrescription('RX-001');
-        await cubit.checkEligibility();
-      },
-      verify: (cubit) {
-        // O EAN não aparece no estado de visão, então o oráculo é o que
-        // atravessou a fronteira: o medicamento que chegou ao repositório.
-        expect(_medicationRepository.checked?.ean, '7891000000011');
-        expect(_medicationRepository.checked?.unitPriceInCents, 2500);
-      },
-    );
+    test('builds the scanned medication from the informed ean', () async {
+      final medications = _RecordingMedicationRepository(eligibilityResult: true);
+      final cubit = _cubit(session: _session(), medications: medications);
+
+      addTearDown(cubit.close);
+
+      // A View passa uma `String`; quem constrói o `Medication` é o Cubit.
+      await cubit.scanMedication('7891000000011');
+      await cubit.submitPrescription('RX-001');
+      await cubit.checkEligibility();
+
+      expect(medications.checked?.ean, '7891000000011');
+      expect(medications.checked?.unitPriceInCents, 2500);
+    });
 
     blocTest<CheckoutCubit, CheckoutViewState>(
       'advances to validation and then to eligibility',
@@ -58,9 +56,6 @@ void main() {
             .having((state) => state.currentStep, 'currentStep', 2)
             .having((state) => state.canCheckEligibility, 'canCheckEligibility', isTrue),
       ],
-      verify: (cubit) {
-        expect(_prescriptionRepository.validated?.reference, 'RX-001');
-      },
     );
 
     blocTest<CheckoutCubit, CheckoutViewState>(
@@ -104,16 +99,36 @@ void main() {
       ],
     );
 
-    blocTest<CheckoutCubit, CheckoutViewState>(
-      'checks eligibility of the first scanned medication',
-      build: () =>
-          _cubit(session: _session(status: CheckoutStatus.checkingEligibility, medicationCount: 2)),
-      act: (cubit) => cubit.checkEligibility(),
-      verify: (cubit) {
-        // A escolha era da View (`session.medications.first`) e mudou de dono.
-        expect(_medicationRepository.checked?.ean, '7891000000010');
-      },
-    );
+    test('checks eligibility of the first scanned medication', () async {
+      final medications = _RecordingMedicationRepository(eligibilityResult: true);
+      final cubit = _cubit(
+        session: _session(status: CheckoutStatus.checkingEligibility, medicationCount: 2),
+        medications: medications,
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.checkEligibility();
+
+      // A escolha era da View (`session.medications.first`) e mudou de dono.
+      expect(medications.checked?.ean, '7891000000010');
+    });
+
+    test('does nothing when eligibility is checked without a scanned medication', () async {
+      final medications = _RecordingMedicationRepository(eligibilityResult: true);
+      final cubit = _cubit(
+        session: _session(status: CheckoutStatus.checkingEligibility),
+        medications: medications,
+      );
+
+      addTearDown(cubit.close);
+
+      final before = cubit.state;
+      await cubit.checkEligibility();
+
+      expect(medications.checked, isNull);
+      expect(cubit.state, before);
+    });
 
     blocTest<CheckoutCubit, CheckoutViewState>(
       'reports a permanent failure when the medication is not eligible',
@@ -216,36 +231,61 @@ void main() {
             .having((state) => state.canCreatePayment, 'canCreatePayment', isTrue),
       ],
     );
+
+    test('sends the informed reference to the prescription repository', () async {
+      final prescriptions = _RecordingPrescriptionRepository(validationResult: true);
+      final cubit = _cubit(session: _session(medicationCount: 1), prescriptions: prescriptions);
+
+      addTearDown(cubit.close);
+
+      await cubit.submitPrescription('RX-001');
+
+      expect(prescriptions.validated?.reference, 'RX-001');
+    });
+
+    test('sends the current session to the checkout repository', () async {
+      final checkouts = _RecordingCheckoutRepository(createdCheckoutId: 'remote-checkout-001');
+      final cubit = _cubit(
+        session: _session(status: CheckoutStatus.creatingPayment, medicationCount: 1),
+        checkouts: checkouts,
+      );
+
+      addTearDown(cubit.close);
+
+      await cubit.createCheckout();
+
+      // A sessão que atravessou é a do fluxo, não uma reconstruída.
+      expect(checkouts.createdSession?.medications, hasLength(1));
+    });
   });
 }
 
-late _RecordingPrescriptionRepository _prescriptionRepository;
-late _RecordingMedicationRepository _medicationRepository;
-late _RecordingCheckoutRepository _checkoutRepository;
-
 CheckoutCubit _cubit({
   required CheckoutSession session,
+  PrescriptionRepository? prescriptions,
+  MedicationRepository? medications,
+  CheckoutRepository? checkouts,
   bool prescriptionIsValid = true,
   bool medicationIsEligible = true,
   CheckoutSession? paidCheckout,
   Object? createError,
   Object? getByIdError,
 }) {
-  _prescriptionRepository = _RecordingPrescriptionRepository(validationResult: prescriptionIsValid);
-  _medicationRepository = _RecordingMedicationRepository(eligibilityResult: medicationIsEligible);
-  _checkoutRepository = _RecordingCheckoutRepository(
-    createdCheckoutId: 'remote-checkout-001',
-    checkoutById: paidCheckout,
-    createError: createError,
-    getByIdError: getByIdError,
-  );
-
   return CheckoutCubit(
     initialSession: session,
     stateMachine: const CheckoutStateMachine(),
-    prescriptionRepository: _prescriptionRepository,
-    medicationRepository: _medicationRepository,
-    checkoutRepository: _checkoutRepository,
+    prescriptionRepository:
+        prescriptions ?? _RecordingPrescriptionRepository(validationResult: prescriptionIsValid),
+    medicationRepository:
+        medications ?? _RecordingMedicationRepository(eligibilityResult: medicationIsEligible),
+    checkoutRepository:
+        checkouts ??
+        _RecordingCheckoutRepository(
+          createdCheckoutId: 'remote-checkout-001',
+          checkoutById: paidCheckout,
+          createError: createError,
+          getByIdError: getByIdError,
+        ),
   );
 }
 
