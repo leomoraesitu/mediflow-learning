@@ -1,11 +1,12 @@
-import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/cubit/checkout_cubit.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_indicator.dart';
-import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_progress_selector.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/medication_counter_content.dart';
+
+typedef _Progress = ({int currentStep, int totalSteps, String label});
 
 class PharmacyModePage extends StatefulWidget {
   const PharmacyModePage({super.key});
@@ -30,13 +31,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     if (!isValid) {
       return;
     }
-    context.read<CheckoutCubit>().scanMedication(
-      Medication(
-        ean: _eanController.text,
-        name: 'Medicamento demonstrativo',
-        unitPriceInCents: 2500,
-      ),
-    );
+    context.read<CheckoutCubit>().scanMedication(_eanController.text);
   }
 
   Future<void> _submitPrescription() async {
@@ -46,7 +41,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
       return;
     }
 
-    await context.read<CheckoutCubit>().submitPrescription(Prescription(reference: reference));
+    await context.read<CheckoutCubit>().submitPrescription(reference);
   }
 
   @override
@@ -65,77 +60,68 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            BlocSelector<CheckoutCubit, CheckoutSession, CheckoutProgressData>(
-              selector: selectCheckoutProgress,
+            BlocSelector<CheckoutCubit, CheckoutViewState, _Progress>(
+              selector: (state) => (
+                currentStep: state.currentStep,
+                totalSteps: state.totalSteps,
+                label: state.stepLabel,
+              ),
               builder: (context, progress) {
                 return Padding(
                   padding: const EdgeInsets.all(8),
                   child: CheckoutProgressIndicator(
                     currentStep: progress.currentStep,
-                    totalSteps: 4,
+                    totalSteps: progress.totalSteps,
                     label: progress.label,
                   ),
                 );
               },
             ),
-            BlocSelector<
-              CheckoutCubit,
-              CheckoutSession,
-              ({CheckoutStatus status, String? message, String? remoteCheckoutId})
-            >(
-              selector: (session) => (
-                status: session.status,
-                message: session.statusMessage,
-                remoteCheckoutId: session.remoteCheckoutId,
-              ),
+            // O seletor devolve um objeto só, com igualdade de valor. Antes era
+            // um registro de três campos montado aqui, e a decisão de qual
+            // deles virava qual tela vivia neste `builder`.
+            BlocSelector<CheckoutCubit, CheckoutViewState, CheckoutFeedback>(
+              selector: (state) => state.feedback,
               builder: (context, feedback) {
-                if (feedback.status == CheckoutStatus.paid && feedback.remoteCheckoutId != null) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            'Pagamento confirmado',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text('Checkout ${feedback.remoteCheckoutId} concluído.'),
-                      ],
-                    ),
-                  );
-                }
-                if (feedback.message == null) {
-                  return const SizedBox.shrink();
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                // `switch` exaustivo sobre a hierarquia selada: uma variante
+                // nova quebra a compilação em vez de cair num caso silencioso.
+                return switch (feedback) {
+                  NoFeedback() => const SizedBox.shrink(),
+                  SuccessFeedback(:final checkoutId) => _FeedbackBlock(
                     children: [
-                      Semantics(liveRegion: true, child: Text(feedback.message!)),
-                      if (feedback.status == CheckoutStatus.recoverableFailure) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        ElevatedButton(
-                          onPressed: () => context.read<CheckoutCubit>().retry(),
-                          child: const Text('Tentar novamente'),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          'Pagamento confirmado',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text('Checkout $checkoutId concluído.'),
                     ],
                   ),
-                );
+                  RecoverableFailure(:final message) => _FeedbackBlock(
+                    children: [
+                      Semantics(liveRegion: true, child: Text(message)),
+                      const SizedBox(height: AppSpacing.sm),
+                      ElevatedButton(
+                        onPressed: () => context.read<CheckoutCubit>().retry(),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                  PermanentFailure(:final message) => _FeedbackBlock(
+                    children: [Semantics(liveRegion: true, child: Text(message))],
+                  ),
+                };
               },
             ),
             Expanded(
-              child: BlocConsumer<CheckoutCubit, CheckoutSession>(
+              child: BlocConsumer<CheckoutCubit, CheckoutViewState>(
                 listenWhen: (previous, current) {
-                  return current.medications.length > previous.medications.length;
+                  return current.medicationCount > previous.medicationCount;
                 },
-                listener: (context, session) {
+                listener: (context, state) {
                   _eanController.clear();
                   FocusScope.of(context).unfocus();
 
@@ -143,32 +129,23 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                     context,
                   ).showSnackBar(const SnackBar(content: Text('Medicamento adicionado à compra.')));
                 },
-                builder: (context, session) {
+                builder: (context, state) {
                   return MedicationCounterContent(
-                    count: session.medications.length,
-                    onScan: _scanMedication,
+                    medicationLabel: state.medicationLabel,
+                    medicationCount: state.medicationCount,
+                    onScan: state.canScan ? _scanMedication : null,
                     prescriptionController: _prescriptionController,
                     eanController: _eanController,
                     formKey: _formKey,
                     onFillDemoEan: _fillDemoEan,
-                    onSubmit:
-                        session.status == CheckoutStatus.collectingMedication &&
-                            session.medications.isNotEmpty
-                        ? _submitPrescription
+                    onSubmit: state.canSubmit ? _submitPrescription : null,
+                    onCheckEligibility: state.canCheckEligibility
+                        ? () => context.read<CheckoutCubit>().checkEligibility()
                         : null,
-                    onCheckEligibility:
-                        session.status == CheckoutStatus.checkingEligibility &&
-                            session.medications.isNotEmpty
-                        ? () => context.read<CheckoutCubit>().checkEligibility(
-                            session.medications.first,
-                          )
-                        : null,
-                    onCreateCheckout: session.status == CheckoutStatus.creatingPayment
+                    onCreateCheckout: state.canCreatePayment
                         ? () => context.read<CheckoutCubit>().createCheckout()
                         : null,
-                    onConfirmPayment:
-                        session.status == CheckoutStatus.awaitingConfirmation &&
-                            session.remoteCheckoutId != null
+                    onConfirmPayment: state.canConfirmPayment
                         ? () => context.read<CheckoutCubit>().confirmPayment()
                         : null,
                   );
@@ -187,5 +164,19 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
     _prescriptionController.dispose();
     _eanController.dispose();
     super.dispose();
+  }
+}
+
+class _FeedbackBlock extends StatelessWidget {
+  const _FeedbackBlock({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    );
   }
 }

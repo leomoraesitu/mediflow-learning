@@ -1,4 +1,3 @@
-import 'package:checkout_domain/checkout_domain.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,8 +47,7 @@ void main() {
     final contentContext = tester.element(find.byType(MedicationCounterContent));
     final checkoutCubit = contentContext.read<CheckoutCubit>();
 
-    expect(checkoutCubit.state.medications, hasLength(1));
-    expect(checkoutCubit.state.medications.single.ean, '7891000000011');
+    expect(checkoutCubit.state.medicationCount, 1);
     expect(find.text('1 medicamento lido'), findsOneWidget);
   });
 
@@ -77,13 +75,7 @@ void main() {
     final contentContext = tester.element(find.byType(MedicationCounterContent));
     final checkoutCubit = contentContext.read<CheckoutCubit>();
 
-    await checkoutCubit.scanMedication(
-      const Medication(
-        ean: '7891000000011',
-        name: 'Medicamento demonstrativo',
-        unitPriceInCents: 2500,
-      ),
-    );
+    await checkoutCubit.scanMedication('7891000000011');
     await tester.pumpAndSettle();
 
     expect(find.text('Medicamento adicionado à compra.'), findsOneWidget);
