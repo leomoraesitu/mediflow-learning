@@ -340,6 +340,60 @@ O `FakeAuthGateway` cresceu junto — `currentUserValue` público para montar os
 
 Devolver `null` para conta rejeitada faz a requisição sair sem `Authorization` (`checkout_api_client.dart:81-86`), o que garante `401` e, com os gatilhos do outbox, um laço. Está registrado na [ADR 0001](../../docs/adr/0001-offline-first-scope-and-limits.md) e é o assunto da Aula 56.
 
+### Entrar e cadastrar, e o portão (Aula 54)
+
+O aplicativo deixou de criar sessão anônima. `main.dart` não chama mais `signInAnonymously`, e a primeira tela passou a depender de quem está autenticado.
+
+`features/auth/presentation/` tem cinco arquivos: `AuthViewState` e `AuthCubit` (o ViewModel do formulário), `SignInPage` e `RegisterPage`, `AuthGate` e `auth_validators.dart`.
+
+#### O portão
+
+```dart
+StreamBuilder<AuthUser?>(
+  stream: _authState,                                  // assinado uma vez, num campo
+  initialData: widget.authGateway.currentUser,
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) { ... }
+```
+
+Três estados, e o discriminador é `connectionState` — **não** `hasData`. `hasData` é `data != null`, então num `Stream<AuthUser?>` ele confunde "ainda não sei" com "ninguém autenticado", e a tela de entrada apareceria por um quadro em toda abertura de quem já entrou. O `initialData` elimina até esse quadro quando já existe sessão: é o uso do `currentUser` síncrono que justificou a assinatura na Aula 53.
+
+`authenticatedHome` chega pronto, então o portão não conhece a tela de benefícios — e é testado com um `Placeholder`.
+
+#### A tradução dos códigos
+
+`AuthCubit` mapeia `AuthGatewayException.code` para a mensagem que a pessoa lê. `invalid-credential`, `user-not-found` e `wrong-password` colapsam numa frase só — com a proteção contra enumeração de e-mails ligada, o Firebase já devolve o mesmo código para conta inexistente e senha errada, e distinguir na mensagem desfaria a proteção do lado do cliente. É a mesma decisão do `404` em vez de `403` nas functions.
+
+Códigos não mapeados vão para `debugPrint` e produzem mensagem genérica: o código cru não significa nada para quem lê, mas some do diagnóstico se ninguém o registrar.
+
+#### O que as quebras dirigidas mostraram
+
+| Sabotagem | Único vermelho |
+| --- | --- |
+| `connectionState == waiting` → `!snapshot.hasData` | `shows the sign in page when nobody is authenticated` |
+| rota de cadastro sem `BlocProvider` | `opens the register screen from the sign in page` |
+| remover o `initialData` | `shows the authenticated home when a user is signed in` |
+| portão ignora o fluxo | `swaps to the authenticated home when the user signs in` |
+| remover a guarda de reentrância do Cubit | `ignores a second attempt while the first is still running` |
+
+A primeira contrariou a previsão: o teste do estado de espera **não** a pega, porque antes do primeiro evento os dois discriminadores concordam. Eles só divergem quando chega um evento explícito de ausência de usuário.
+
+#### Três defeitos que o analisador não pegava
+
+Um `context.read<SignInPage>()` procurando um `Provider` de um widget, que nunca existe. Uma rota empurrada sem provedor, porque o da tela de entrada é descendente do `Navigator` e não ancestral. E o mínimo de senha divergindo entre duas cópias do mesmo validador, uma exigindo seis caracteres e a outra oito.
+
+Os dois primeiros só apareceram com sondas descartáveis. O terceiro levou os validadores para `auth_validators.dart`: privacidade em Dart é por biblioteca, então validadores privados em cada tela não podem ser compartilhados — só copiados.
+
+#### A costura fechou
+
+```
+grep -rln "package:firebase_auth" apps/mobile/lib
+  lib/main.dart                         ← composition root
+  lib/config/firebase_auth_gateway.dart ← adaptador
+```
+
+`composeDependencies` continua pura: ela **recebe** o `AuthGateway`, e quem constrói o `FirebaseAuthGateway` é o `main()`. Uma instância só, compartilhada entre o provedor de token e o portão.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:

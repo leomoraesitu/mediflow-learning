@@ -7,6 +7,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_reposi
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/main.dart';
 
+import 'config/fake_auth_gateway.dart';
+
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 void main() {
   testWidgets('exibe erros e não adiciona medicamento com formulário vazio', (tester) async {
     final openPharmacyModeButton = find.text('Iniciar Modo Farmácia');
@@ -20,6 +24,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -58,6 +63,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -100,6 +106,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -140,4 +147,12 @@ void main() {
     expect(find.text('Informe o EAN do medicamento.'), findsNothing);
     expect(find.text('O EAN deve conter 13 dígitos.'), findsNothing);
   });
+}
+
+/// Um gateway já autenticado: estes testes verificam telas que ficam depois do
+/// portão, e não o portão em si. Sem uma sessão, todos veriam a tela de
+/// entrada.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()
+    ..currentUserValue = const AuthUser(uid: 'usuario-de-teste', isAnonymous: false);
 }

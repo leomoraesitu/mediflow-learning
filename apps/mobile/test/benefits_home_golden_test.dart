@@ -7,6 +7,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_reposi
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/main.dart';
 
+import 'config/fake_auth_gateway.dart';
+
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 /// Goldens da tela de benefícios.
 ///
 /// Cobrem a única categoria de defeito que os outros testes não enxergam:
@@ -38,6 +42,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: OutboxCheckoutRepository(
           inner: DemoCheckoutRepository(),
@@ -66,4 +71,12 @@ void main() {
       matchesGoldenFile('goldens/benefits_home_pending_sync.png'),
     );
   });
+}
+
+/// Um gateway já autenticado: estes testes verificam telas que ficam depois do
+/// portão, e não o portão em si. Sem uma sessão, todos veriam a tela de
+/// entrada.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()
+    ..currentUserValue = const AuthUser(uid: 'usuario-de-teste', isAnonymous: false);
 }

@@ -63,3 +63,18 @@ O cenário dele é real e não fabricado: `submitPrescription` sem medicamentos 
 **A propriedade do `CheckoutCubit` também ficou para a Aula 52.** `BlocProvider.value` não fecha o que recebe, e o cubit nascia dentro de um callback de navegação: cada abertura do Modo Farmácia deixava para trás um cubit com um `DriftCheckoutSessionStorage` dentro. A correção resolve o `restore()` antes de navegar e fecha depois de `Navigator.push` completar — criação e destruição simétricas, no mesmo método —, com `context.mounted` cobrindo o caso em que a tela sai antes da resolução.
 
 **A validação da receita passou a ser por campo, não por formulário.** `_submitPrescription` chamava uma checagem paralela de `isEmpty` que retornava em silêncio. Trocá-la por `_formKey.currentState.validate()` parecia a simplificação óbvia e estava errada: o formulário inclui o campo do EAN, que o `listener` limpa depois de cada leitura, então validar tudo bloquearia a submissão no fluxo normal. Um teste existente pegou isso. A validação usa uma `GlobalKey<FormFieldState<String>>` do campo da receita.
+
+
+## Adendo — a feature de autenticação (Aula 54)
+
+`features/auth/presentation/` nasceu seguindo as mesmas regras, e três decisões merecem registro.
+
+**O portão discrimina por `connectionState`, não por `hasData`.** `AsyncSnapshot.hasData` é `data != null`, então num `Stream<AuthUser?>` "ainda não sei" e "ninguém autenticado" são indistinguíveis por ele — e a tela de entrada apareceria por um quadro em toda abertura para quem já tem sessão. Os dois discriminadores só discordam quando chega um evento explícito de ausência de usuário, e é exatamente aí que o teste `shows the sign in page when nobody is authenticated` os separa.
+
+**As telas não constroem o próprio Cubit.** Quem provê é o portão, com `BlocProvider(create:)` — que fecha. A rota de cadastro precisa do **seu próprio** provedor: o da tela de entrada é descendente do `Navigator`, não ancestral, e não alcança o que é empurrado por cima. Isso produziu um `ProviderNotFoundException` que o analisador não pegava.
+
+**O sucesso não emite.** Quando a entrada dá certo, o portão troca a tela e descarta o Cubit; um `emit` depois disso lançaria `StateError`. A consequência é que `isBusy` fica preso em `true` — invisível no aplicativo, porque a tela some no mesmo instante, e visível em teste, onde `pumpAndSettle` espera para sempre uma animação que não termina.
+
+**Uma diferença que os testes não conseguem revelar.** O fluxo de `authStateChanges()` é assinado uma vez, num campo, e não a cada `build`. `StreamBuilder` reassina quando o fluxo novo difere do antigo por `!=`; o `stream` de um `StreamController.broadcast` se compara igual entre chamadas, mas o `.map()` do `FirebaseAuthGateway` não. O `FakeAuthGateway` portanto não reproduz o comportamento de produção nesse ponto, e o comentário no código guarda isso.
+
+A validação de campo vazio vive nos formulários, e não no adaptador — foi por isso que ela saiu de `FirebaseAuthGateway` na Aula 53. Os validadores ficam num arquivo compartilhado porque privacidade em Dart é por biblioteca: mantidos privados em cada tela eles foram copiados, e as duas cópias divergiram em um ciclo de edição, uma exigindo seis caracteres e a outra oito.

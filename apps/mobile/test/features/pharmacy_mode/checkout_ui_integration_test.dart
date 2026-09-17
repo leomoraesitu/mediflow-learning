@@ -10,6 +10,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/medication_counter_content.dart';
 import 'package:mediflow_mobile/main.dart';
 
+import '../../config/fake_auth_gateway.dart';
+
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 void main() {
   testWidgets('valid scan updates the checkout session used by the screen', (tester) async {
     final database = CheckoutDatabase(NativeDatabase.memory());
@@ -21,6 +25,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -61,6 +66,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -80,4 +86,12 @@ void main() {
 
     expect(find.text('Medicamento adicionado à compra.'), findsOneWidget);
   });
+}
+
+/// Um gateway já autenticado: estes testes verificam telas que ficam depois do
+/// portão, e não o portão em si. Sem uma sessão, todos veriam a tela de
+/// entrada.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()
+    ..currentUserValue = const AuthUser(uid: 'usuario-de-teste', isAnonymous: false);
 }

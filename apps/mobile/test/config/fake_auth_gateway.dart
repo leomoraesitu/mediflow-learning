@@ -35,6 +35,20 @@ final class FakeAuthGateway implements AuthGateway {
   AuthGatewayException? signInWithEmailError;
   AuthGatewayException? registerWithEmailError;
 
+  /// Segura as operações de e-mail até o teste soltar.
+  ///
+  /// Sem isto, o fake resolve no mesmo microtask e não há instante em que a
+  /// tentativa esteja *em curso* — um teste de "enquanto carrega" acabaria
+  /// observando o estado posterior e passando pelo motivo errado.
+  Completer<void>? pendingEmailOperation;
+
+  void holdEmailOperations() => pendingEmailOperation = Completer<void>();
+
+  void releaseEmailOperations() {
+    pendingEmailOperation?.complete();
+    pendingEmailOperation = null;
+  }
+
   int signOutCalls = 0;
   int signInCalls = 0;
   int signInWithEmailCalls = 0;
@@ -87,6 +101,7 @@ final class FakeAuthGateway implements AuthGateway {
   @override
   Future<AuthUser> signInWithEmail({required String email, required String password}) async {
     signInWithEmailCalls++;
+    await pendingEmailOperation?.future;
     if (signInWithEmailError != null) {
       throw signInWithEmailError!;
     }
@@ -98,6 +113,7 @@ final class FakeAuthGateway implements AuthGateway {
   @override
   Future<AuthUser> registerWithEmail({required String email, required String password}) async {
     registerWithEmailCalls++;
+    await pendingEmailOperation?.future;
     if (registerWithEmailError != null) {
       throw registerWithEmailError!;
     }
