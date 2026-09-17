@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:checkout_domain/checkout_domain.dart';
+import 'package:mediflow_mobile/config/auth_gateway.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
 
@@ -18,7 +19,15 @@ final class OutboxSynchronizer {
   // vale para chamadas na *mesma instância* — duas instâncias teriam sinais
   // independentes, e é por isso que o grafo monta uma só, em
   // `composeDependencies`.
-  OutboxSynchronizer({required this._database, required this._checkoutRepository});
+  /// Como no repositório: o dono é lido a cada drenagem. Os gatilhos de
+  /// conectividade e retomada disparam independentemente de haver sessão.
+  final AuthGateway _authGateway;
+
+  OutboxSynchronizer({
+    required this._database,
+    required this._checkoutRepository,
+    required this._authGateway,
+  });
 
   /// Reenvia o outbox, garantindo que apenas uma drenagem corra por vez.
   ///
@@ -58,9 +67,17 @@ final class OutboxSynchronizer {
   }
 
   Future<void> _drainOnce() async {
+    final userId = _authGateway.currentUser?.uid;
+
+    // Sem ninguém autenticado não há fila a drenar. Os gatilhos disparam de
+    // qualquer jeito — o que fazer com eles nesse caso é a Aula 56.
+    if (userId == null) {
+      return;
+    }
+
     late final List<OutboxEvent> pendingEvents;
     try {
-      pendingEvents = await _database.readPendingOutboxEvents();
+      pendingEvents = await _database.readPendingOutboxEvents(userId);
     } catch (_) {
       // Sem fila, não há trabalho: o método retorna. Este `catch` não existe
       // pelo mesmo motivo que o do laço abaixo — ele está aqui para tornar

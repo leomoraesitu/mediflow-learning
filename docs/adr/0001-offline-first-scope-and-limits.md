@@ -209,6 +209,40 @@ A decisão foi de custo: um modo convidado duplicaria todos os caminhos de ident
 
 O ramo não foi removido: ele está testado, correto, e o custo de mantê-lo é uma linha. Removê-lo significaria também remover `signInAnonymously` do contrato, e essa é uma decisão para quando ficar claro que o modo convidado não volta.
 
+### O banco passou a saber de quem é cada linha (Aula 55)
+
+Até aqui `CheckoutSessionRecords` era uma tabela de registro único (`id = 1`) e as consultas de outbox não filtravam por dono. Isso era seguro enquanto existia uma identidade por aparelho. A Aula 54 acabou com essa condição.
+
+O defeito que ela criou é concreto: A deixa uma compra pendente sem rede, sai, B entra. O drenador lê a fila — que é a de A — e envia com o token de **B**. O backend grava `userId: B`, e não tem como saber: o dono vem do token, não do evento. A compra de A vira compra de B, em silêncio.
+
+`userId` virou coluna nas duas tabelas, a sessão passou a ser identificada pelo dono, e os sete métodos filtram.
+
+**A chave primária do outbox continua sendo `idempotencyKey`.** Trocá-la por `userId` pareceu natural e destruiria a garantia central do projeto: o outbox é uma fila, e com o dono como chave `insertOnConflictUpdate` sobrescreveria — enfileirar a segunda compra apagaria a primeira.
+
+#### Quem responde "de quem?", e por que a resposta é diferente por peça
+
+| Peça | Como sabe | Por quê |
+| --- | --- | --- |
+| `DriftCheckoutSessionStorage` | `uid` no construtor | nasce numa navegação e não sobrevive à troca de usuário |
+| `OutboxCheckoutRepository`, `OutboxSynchronizer` | lê `authGateway.currentUser` a cada uso | vivem o processo inteiro e atravessam trocas |
+| `hasPendingSync` | virou `Stream<bool> Function(String)` | o fluxo depende do usuário, e a composição roda antes de haver sessão |
+
+A alternativa era compor o grafo por usuário — `composeDependencies(userId:)`. Foi descartada por custo: obrigaria a montagem a acontecer depois do login, tirando `drain()` e `scheduler.start()` do `main()` e remontando tudo a cada troca. Guardar o `uid` na composição, sem remontar, é pior do que as duas: o repositório enfileiraria no dono errado depois do primeiro logout.
+
+#### A migração descarta o que não tem dono
+
+Os degraus são cumulativos (`from < n`), e não `from == n`: um aparelho na v1 indo para a v3 precisa passar pelos dois. Com `==`, ele ganharia a tabela de outbox e ficaria sem `userId` na de sessão.
+
+A v3 apaga as linhas existentes. Elas foram gravadas quando não havia usuário, e não há a quem atribuí-las — seriam entregues a quem entrasse primeiro no aparelho. O custo é uma compra pendente perdida na atualização; o alternativo é entregá-la à pessoa errada.
+
+#### O que acontece ao sair: as linhas ficam
+
+**Decisão: preservar.** Sair não apaga nada. A compra pendente de A continua no banco e volta a drenar quando A entrar de novo.
+
+O risco que essa escolha costuma trazer — reenviar evento de um dono com o token de outro — não existe aqui por construção: o drenador lê `currentUser.uid` e consulta **só** a fila desse usuário. Token e eventos vêm sempre da mesma identidade, ou não há drenagem.
+
+Sem sessão, `_drainOnce` retorna sem ler nada. Os três gatilhos continuam disparando; o que fazer com eles quando não há ninguém autenticado é a Aula 56.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.

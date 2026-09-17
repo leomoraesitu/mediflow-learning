@@ -15,7 +15,10 @@ class AuthGate extends StatefulWidget {
   const AuthGate({super.key, required this.authGateway, required this.authenticatedHome});
 
   final AuthGateway authGateway;
-  final Widget authenticatedHome;
+
+  /// Recebe o usuário: a partir da Aula 55 as telas autenticadas precisam
+  /// saber de quem são os dados que leem.
+  final Widget Function(AuthUser user) authenticatedHome;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -69,7 +72,7 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        return widget.authenticatedHome;
+        return widget.authenticatedHome(snapshot.data!);
       },
     );
   }

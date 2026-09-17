@@ -45,13 +45,14 @@ void main() {
         authGateway: _autenticado(),
         database: database,
         checkoutRepository: OutboxCheckoutRepository(
+          authGateway: _autenticado(),
           inner: DemoCheckoutRepository(),
           database: database,
         ),
         prescriptionRepository: const DemoPrescriptionRepository(),
         medicationRepository: const DemoMedicationRepository(),
         settings: const StaticOperationalSettings(),
-        hasPendingSync: Stream<bool>.value(pending),
+        hasPendingSync: (_) => Stream<bool>.value(pending),
       ),
     );
     await tester.pumpAndSettle();

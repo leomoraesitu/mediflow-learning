@@ -19,11 +19,21 @@ void main() {
   });
 
   // `Placeholder` como casa autenticada é o que torna este arquivo um teste do
-  // portão, e não da tela de benefícios.
+  // portão, e não da tela de benefícios. O usuário entregue é guardado à
+  // parte: o que interessa é *qual* chegou, não desenhá-lo na tela.
+  AuthUser? usuarioEntregue;
+
   Future<void> pumpGate(WidgetTester tester) {
+    usuarioEntregue = null;
     return tester.pumpWidget(
       MaterialApp(
-        home: AuthGate(authGateway: fakeAuthGateway, authenticatedHome: const Placeholder()),
+        home: AuthGate(
+          authGateway: fakeAuthGateway,
+          authenticatedHome: (user) {
+            usuarioEntregue = user;
+            return const Placeholder();
+          },
+        ),
       ),
     );
   }
@@ -63,6 +73,8 @@ void main() {
     expect(find.byType(SignInPage), findsNothing);
     // Prova que o `initialData` evitou o quadro de espera: sem ele o spinner
     // apareceria antes da casa, e o teste não perceberia.
+    // O portão entrega *qual* usuário, e não só que há algum.
+    expect(usuarioEntregue?.uid, 'u1');
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 

@@ -18,6 +18,7 @@ void main() {
   testWidgets('valid scan updates the checkout session used by the screen', (tester) async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     final checkoutRepository = OutboxCheckoutRepository(
+      authGateway: _autenticado(),
       inner: DemoCheckoutRepository(),
       database: database,
     );
@@ -25,6 +26,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        hasPendingSync: (_) => const Stream<bool>.empty(),
         authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
@@ -59,6 +61,7 @@ void main() {
   testWidgets('shows confirmation when the checkout session receives a medication', (tester) async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     final checkoutRepository = OutboxCheckoutRepository(
+      authGateway: _autenticado(),
       inner: DemoCheckoutRepository(),
       database: database,
     );
@@ -66,6 +69,7 @@ void main() {
 
     await tester.pumpWidget(
       MainApp(
+        hasPendingSync: (_) => const Stream<bool>.empty(),
         authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,

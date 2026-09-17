@@ -101,7 +101,7 @@ Future<void> main() async {
       prescriptionRepository: dependencies.prescriptionRepository,
       medicationRepository: dependencies.medicationRepository,
       settings: dependencies.settings,
-      hasPendingSync: dependencies.hasPendingSync,
+      hasPendingSync: (_) => const Stream<bool>.empty(),
       authGateway: dependencies.authGateway,
     ),
   );
@@ -113,7 +113,7 @@ class MainApp extends StatelessWidget {
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
-  final Stream<bool> hasPendingSync;
+  final Stream<bool> Function(String userId) hasPendingSync;
   final AuthGateway authGateway;
 
   const MainApp({
@@ -124,7 +124,7 @@ class MainApp extends StatelessWidget {
     required this.medicationRepository,
     required this.settings,
     required this.authGateway,
-    this.hasPendingSync = const Stream<bool>.empty(),
+    required this.hasPendingSync,
   });
 
   @override
@@ -132,7 +132,8 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       home: AuthGate(
         authGateway: authGateway,
-        authenticatedHome: BenefitsHomePage(
+        authenticatedHome: (user) => BenefitsHomePage(
+          userId: user.uid,
           availableBalance: 250.0,
           database: database,
           settings: settings,
