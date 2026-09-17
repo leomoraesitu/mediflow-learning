@@ -9,12 +9,14 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mediflow_mobile/app_dependencies.dart';
+import 'package:mediflow_mobile/config/auth_gateway.dart';
 import 'package:mediflow_mobile/config/firebase_auth_gateway.dart';
 import 'package:mediflow_mobile/config/firebase_auth_token_provider.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/config/remote_config_operational_settings.dart';
 import 'package:mediflow_mobile/connectivity/connectivity_sync_triggers.dart';
 import 'package:mediflow_mobile/design_system/app_theme.dart';
+import 'package:mediflow_mobile/features/auth/presentation/auth_gate.dart';
 import 'package:mediflow_mobile/features/benefits/presentation/benefits_home_page.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
@@ -43,16 +45,12 @@ Future<void> main() async {
     await FirebaseAuth.instance.useAuthEmulator('10.0.2.2', 9099);
   }
 
-  try {
-    if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-    }
-  } on FirebaseAuthException catch (e) {
-    // ignore: avoid_print
-    print('Falha ao autenticar anonimamente: ${e.message}. Seguindo sem usuário autenticado.');
-  }
-
   final settings = await RemoteConfigOperationalSettings.load(FirebaseRemoteConfig.instance);
+
+  // Uma instância só, e isso é requisito: o provedor de token e o portão
+  // observam o mesmo SDK. Construída aqui porque `composeDependencies` é pura
+  // — ela recebe as peças de plataforma, não as alcança.
+  final authGateway = FirebaseAuthGateway(firebaseAuth: FirebaseAuth.instance);
 
   // Daqui para baixo nada mais depende de plataforma: a montagem do grafo é
   // uma função pura sobre estas quatro peças, e é isso que a torna testável.
@@ -61,9 +59,7 @@ Future<void> main() async {
     apiClient: CheckoutApiClient(
       baseUrl: checkoutApiBaseUrl,
       timeout: settings.checkoutTimeout,
-      tokenProvider: FirebaseAuthTokenProvider(
-        FirebaseAuthGateway(firebaseAuth: FirebaseAuth.instance),
-      ).token,
+      tokenProvider: FirebaseAuthTokenProvider(authGateway).token,
     ),
     settings: settings,
     tracer: FirebasePerformanceTracer(performance: FirebasePerformance.instance),
@@ -76,6 +72,7 @@ Future<void> main() async {
     // com o processo em segundo plano, onde o Android não promete entregar o
     // aviso — restrições de background e Doze podem engoli-lo.
     syncTriggers: [ConnectivitySyncTriggers.defaults().stream, LifecycleSyncTriggers().stream],
+    authGateway: authGateway,
   );
 
   // As duas ações que a composição deliberadamente não faz.
@@ -105,6 +102,7 @@ Future<void> main() async {
       medicationRepository: dependencies.medicationRepository,
       settings: dependencies.settings,
       hasPendingSync: dependencies.hasPendingSync,
+      authGateway: dependencies.authGateway,
     ),
   );
 }
@@ -116,6 +114,7 @@ class MainApp extends StatelessWidget {
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
   final Stream<bool> hasPendingSync;
+  final AuthGateway authGateway;
 
   const MainApp({
     super.key,
@@ -124,20 +123,24 @@ class MainApp extends StatelessWidget {
     required this.prescriptionRepository,
     required this.medicationRepository,
     required this.settings,
+    required this.authGateway,
     this.hasPendingSync = const Stream<bool>.empty(),
   });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: BenefitsHomePage(
-        availableBalance: 250.0,
-        database: database,
-        settings: settings,
-        checkoutRepository: checkoutRepository,
-        prescriptionRepository: prescriptionRepository,
-        medicationRepository: medicationRepository,
-        hasPendingSync: hasPendingSync,
+      home: AuthGate(
+        authGateway: authGateway,
+        authenticatedHome: BenefitsHomePage(
+          availableBalance: 250.0,
+          database: database,
+          settings: settings,
+          checkoutRepository: checkoutRepository,
+          prescriptionRepository: prescriptionRepository,
+          medicationRepository: medicationRepository,
+          hasPendingSync: hasPendingSync,
+        ),
       ),
       theme: AppTheme.light,
     );

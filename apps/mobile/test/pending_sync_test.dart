@@ -7,6 +7,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checko
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/main.dart';
 
+import 'config/fake_auth_gateway.dart';
+
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 void main() {
   testWidgets('shows the pending sync indicator on the benefits screen', (tester) async {
     final database = CheckoutDatabase(NativeDatabase.memory());
@@ -19,6 +23,7 @@ void main() {
     );
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -33,4 +38,12 @@ void main() {
     expect(find.byType(PendingSyncIndicator), findsOneWidget);
     expect(find.text(PendingSyncIndicator.message), findsOneWidget);
   });
+}
+
+/// Um gateway já autenticado: estes testes verificam telas que ficam depois do
+/// portão, e não o portão em si. Sem uma sessão, todos veriam a tela de
+/// entrada.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()
+    ..currentUserValue = const AuthUser(uid: 'usuario-de-teste', isAnonymous: false);
 }

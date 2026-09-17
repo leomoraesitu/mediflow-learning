@@ -13,6 +13,7 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_
 import 'package:mediflow_mobile/observability/performance_tracer.dart';
 
 import 'features/pharmacy_mode/data/remote/fake_http_client_adapter.dart';
+import 'config/fake_auth_gateway.dart';
 
 void main() {
   late CheckoutDatabase database;
@@ -42,6 +43,7 @@ void main() {
     addTearDown(() => dio.close(force: true));
 
     dependencies = composeDependencies(
+      authGateway: FakeAuthGateway(),
       database: database,
       apiClient: CheckoutApiClient.withDio(
         dio,
@@ -131,6 +133,7 @@ void main() {
     addTearDown(() => dio.close(force: true));
 
     final localDependencies = composeDependencies(
+      authGateway: FakeAuthGateway(),
       database: localDatabase,
       apiClient: CheckoutApiClient.withDio(
         dio,

@@ -199,6 +199,16 @@ O mesmo desfecho vale quando o próprio `signOut()` falha: o chamador recebe `nu
 
 Fechar esse laço exige decidir o que o `OutboxSyncScheduler` faz quando não há ninguém autenticado, e é o assunto da Aula 56. Fica registrado aqui como dívida nomeada, e não como surpresa.
 
+### O modo anônimo saiu (Aula 54)
+
+A Aula 53 ensinou a política de recuperação a distinguir sessão anônima de conta. A Aula 54 acrescentou telas de entrada e de cadastro, um portão sobre `authStateChanges()`, e removeu o `signInAnonymously` bloqueante do `main()` — o aplicativo não cria mais sessão anônima em lugar nenhum, e "entrar como convidado" foi descartado de propósito.
+
+A decisão foi de custo: um modo convidado duplicaria todos os caminhos de identidade nas Aulas 55 e 56, e criaria um problema próprio — o outbox pendente de um anônimo que depois cria conta pertence a quem? Sem convidado, a pergunta não existe.
+
+**A consequência é que o ramo anônimo de `_recoverIdentity` ficou quase inalcançável.** Ele responde hoje a `user == null || user.isAnonymous`, e `isAnonymous` não tem mais como ser verdadeiro. Sobra o `user == null`, que acontece quando o token falha sem haver sessão.
+
+O ramo não foi removido: ele está testado, correto, e o custo de mantê-lo é uma linha. Removê-lo significaria também remover `signInAnonymously` do contrato, e essa é uma decisão para quando ficar claro que o modo convidado não volta.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.

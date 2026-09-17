@@ -9,6 +9,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_pro
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 import 'package:mediflow_mobile/main.dart';
 
+import 'config/fake_auth_gateway.dart';
+
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 void main() {
   testWidgets('maintenanceMode true deve exibir mensagem e impedir acesso ao Modo Farmácia', (
     tester,
@@ -23,6 +27,7 @@ void main() {
     );
     await tester.pumpWidget(
       MainApp(
+        authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
         prescriptionRepository: const DemoPrescriptionRepository(),
@@ -64,6 +69,7 @@ void main() {
       );
       await tester.pumpWidget(
         MainApp(
+          authGateway: _autenticado(),
           database: database,
           checkoutRepository: checkoutRepository,
           prescriptionRepository: const DemoPrescriptionRepository(),
@@ -89,4 +95,12 @@ void main() {
       expect(find.byType(CheckoutProgressIndicator), findsOneWidget);
     },
   );
+}
+
+/// Um gateway já autenticado: estes testes verificam telas que ficam depois do
+/// portão, e não o portão em si. Sem uma sessão, todos veriam a tela de
+/// entrada.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()
+    ..currentUserValue = const AuthUser(uid: 'usuario-de-teste', isAnonymous: false);
 }
