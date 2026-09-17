@@ -10,44 +10,60 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/drift_checkout_sessi
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pending_sync_indicator.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mode_page.dart';
 
-class BenefitsHomePage extends StatelessWidget {
+class BenefitsHomePage extends StatefulWidget {
+  final String userId;
   final double availableBalance;
   final CheckoutDatabase database;
   final CheckoutRepository checkoutRepository;
   final PrescriptionRepository prescriptionRepository;
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
-  final Stream<bool> hasPendingSync;
+  final Stream<bool> Function(String userId) hasPendingSync;
 
   const BenefitsHomePage({
     super.key,
+    required this.userId,
     required this.availableBalance,
     required this.database,
     required this.checkoutRepository,
     required this.prescriptionRepository,
     required this.medicationRepository,
     required this.settings,
-    this.hasPendingSync = const Stream<bool>.empty(),
+    required this.hasPendingSync,
   });
 
-  Future<void> _openPharmacyMode(BuildContext context) async {
-    final storage = DriftCheckoutSessionStorage(database);
+  @override
+  State<BenefitsHomePage> createState() => _BenefitsHomePageState();
+}
+
+class _BenefitsHomePageState extends State<BenefitsHomePage> {
+  /// O fluxo é criado uma vez, e não a cada `build`.
+  ///
+  /// `hasPendingSync` é uma função porque depende do usuário, e o Drift
+  /// devolve um `Stream` novo a cada chamada. Chamá-la dentro do `build`
+  /// faria o `StreamBuilder` do indicador ver um fluxo diferente a cada
+  /// reconstrução, reassinar, receber uma emissão, reconstruir — um laço
+  /// infinito que ainda vaza uma consulta de banco por volta.
+  late final Stream<bool> _hasPendingSync = widget.hasPendingSync(widget.userId);
+
+  Future<void> _openPharmacyMode() async {
+    final storage = DriftCheckoutSessionStorage(widget.database, widget.userId);
 
     final cubit = await CheckoutCubit.restore(
       fallbackSession: CheckoutSession(
         id: 'session-001',
-        availableBalanceInCents: (availableBalance * 100).round(),
+        availableBalanceInCents: (widget.availableBalance * 100).round(),
         prescription: null,
         medications: [],
         status: CheckoutStatus.collectingMedication,
       ),
       storage: storage,
       stateMachine: const CheckoutStateMachine(),
-      prescriptionRepository: prescriptionRepository,
-      medicationRepository: medicationRepository,
-      checkoutRepository: checkoutRepository,
+      prescriptionRepository: widget.prescriptionRepository,
+      medicationRepository: widget.medicationRepository,
+      checkoutRepository: widget.checkoutRepository,
     );
-    if (!context.mounted) {
+    if (!mounted) {
       await cubit.close();
       return;
     }
@@ -68,14 +84,14 @@ class BenefitsHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final formattedBalance = availableBalance.toStringAsFixed(2).replaceFirst('.', ',');
+    final formattedBalance = widget.availableBalance.toStringAsFixed(2).replaceFirst('.', ',');
 
     return Scaffold(
       appBar: AppBar(title: const Text('MediFlow')),
       body: SafeArea(
         child: Column(
           children: [
-            PendingSyncIndicator(hasPendingSync: hasPendingSync),
+            PendingSyncIndicator(hasPendingSync: _hasPendingSync),
             Expanded(
               child: MediFlowContentCard(
                 child: Column(
@@ -112,15 +128,15 @@ class BenefitsHomePage extends StatelessWidget {
 
                     Column(
                       children: [
-                        if (settings.maintenanceMode)
-                          Text(settings.maintenanceMessage, textAlign: TextAlign.center),
+                        if (widget.settings.maintenanceMode)
+                          Text(widget.settings.maintenanceMessage, textAlign: TextAlign.center),
                         const SizedBox(height: AppSpacing.md),
 
                         ElevatedButton(
-                          onPressed: settings.maintenanceMode
+                          onPressed: widget.settings.maintenanceMode
                               ? null
                               : () {
-                                  _openPharmacyMode(context);
+                                  _openPharmacyMode();
                                 },
                           child: const Text('Iniciar Modo Farmácia'),
                         ),

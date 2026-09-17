@@ -4,12 +4,18 @@ import 'dart:convert';
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mediflow_mobile/config/auth_user.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_snapshot.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_checkout_repository.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/outbox_synchronizer.dart';
 
+import '../../../../config/fake_auth_gateway.dart';
+
 void main() {
+  FakeAuthGateway comUsuario(String uid) =>
+      FakeAuthGateway()..currentUserValue = AuthUser(uid: uid, isAnonymous: false);
+
   test('skips events with an unknown operation type', () async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     addTearDown(database.close);
@@ -27,17 +33,26 @@ void main() {
       idempotencyKey: 'key-01',
       operationType: 'unknownOperation',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(session).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await synchronizer.drain();
 
-    final pendingEvents = await database.readPendingOutboxEvents();
+    final pendingEvents = await database.readPendingOutboxEvents('usuario-a');
 
     expect(pendingEvents.length, 1);
   });
@@ -59,17 +74,26 @@ void main() {
       idempotencyKey: 'key-01',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(session).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await synchronizer.drain();
 
-    final pendingEvents = await database.readPendingOutboxEvents();
+    final pendingEvents = await database.readPendingOutboxEvents('usuario-a');
 
     expect(pendingEvents, isEmpty);
   });
@@ -90,6 +114,7 @@ void main() {
       idempotencyKey: 'key-01',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(session).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(
@@ -97,13 +122,21 @@ void main() {
       failingIdempotencyKeys: {'key-01'},
     );
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await synchronizer.drain();
 
-    final pendingEvents = await database.readPendingOutboxEvents();
+    final pendingEvents = await database.readPendingOutboxEvents('usuario-a');
 
     expect(pendingEvents.length, 1);
     expect(pendingEvents.single.idempotencyKey, 'key-01');
@@ -125,6 +158,7 @@ void main() {
       idempotencyKey: 'key-fail',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(failingSession).toMap()),
+      userId: 'usuario-a',
     );
     final succeedingSession = CheckoutSession(
       id: 'session-id',
@@ -139,6 +173,7 @@ void main() {
       idempotencyKey: 'key-ok',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(succeedingSession).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(
@@ -146,13 +181,21 @@ void main() {
       failingIdempotencyKeys: {'key-fail'},
     );
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await synchronizer.drain();
 
-    final pendingEvents = await database.readPendingOutboxEvents();
+    final pendingEvents = await database.readPendingOutboxEvents('usuario-a');
 
     expect(pendingEvents.length, 1);
     expect(pendingEvents.single.idempotencyKey, 'key-fail');
@@ -180,13 +223,22 @@ void main() {
       idempotencyKey: 'key-pending',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(pendingSession).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await database.close();
 
@@ -209,6 +261,7 @@ void main() {
       idempotencyKey: key,
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(sessionFor(key)).toMap()),
+      userId: 'usuario-a',
     );
 
     await enqueue('key-01');
@@ -221,8 +274,16 @@ void main() {
       holdUntil: liberar.future,
     );
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     final primeira = synchronizer.drain();
     await pumpEventQueue();
@@ -245,7 +306,7 @@ void main() {
       containsAll(<String>['key-01', 'key-02']),
     );
     expect(repository.createdSessions, hasLength(2));
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
 
   test('drains again after a previous drain finished', () async {
@@ -267,11 +328,20 @@ void main() {
           ),
         ).toMap(),
       ),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     await enqueue('key-01');
     await synchronizer.drain();
@@ -287,7 +357,7 @@ void main() {
       repository.createdSessions.map((s) => s.idempotencyKey),
       containsAll(<String>['key-01', 'key-02']),
     );
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
 
   test('resends each event once when drained concurrently', () async {
@@ -307,13 +377,22 @@ void main() {
       idempotencyKey: 'key-pending',
       operationType: 'createCheckout',
       payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(pendingSession).toMap()),
+      userId: 'usuario-a',
     );
 
     final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
 
-    final outboxRepo = OutboxCheckoutRepository(inner: repository, database: database);
+    final outboxRepo = OutboxCheckoutRepository(
+      inner: repository,
+      database: database,
+      authGateway: comUsuario('usuario-a'),
+    );
 
-    final synchronizer = OutboxSynchronizer(database: database, checkoutRepository: outboxRepo);
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: outboxRepo,
+      authGateway: comUsuario('usuario-a'),
+    );
 
     // Sem `await` entre as duas: é isso que simula os gatilhos chegando
     // juntos — conectividade e retomada do aplicativo, por exemplo.
@@ -323,7 +402,54 @@ void main() {
     // com dois, porque remover a mesma chave duas vezes não falha. O que
     // distingue é quantas vezes o repositório foi acionado.
     expect(repository.createdSessions, hasLength(1));
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
+  });
+  test('skips draining when nobody is authenticated', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    // Há fila, e ela é de alguém: o que falta é sessão.
+    //
+    // O payload precisa ser desserializável. Com `'{}'`, a reconstrução da
+    // sessão lança dentro do laço, o `catch` engole, e nada é enviado — o
+    // teste passaria mesmo sem a guarda, pelo motivo errado.
+    await database.enqueueOutboxEvent(
+      userId: 'usuario-a',
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: jsonEncode(
+        CheckoutSessionSnapshot.fromDomain(
+          CheckoutSession(
+            id: 'session-id',
+            availableBalanceInCents: 1000,
+            prescription: null,
+            medications: [],
+            status: CheckoutStatus.creatingPayment,
+            idempotencyKey: 'key-01',
+          ),
+        ).toMap(),
+      ),
+    );
+
+    final repository = _FakeCheckoutRepository(createdCheckoutId: 'remote-01');
+
+    final semSessao = FakeAuthGateway();
+    addTearDown(semSessao.dispose);
+
+    // O repositório entra direto, sem o `OutboxCheckoutRepository` em volta.
+    // Envolvido, *ele* lançaria por falta de sessão e o erro seria engolido
+    // pelo `catch` do laço — o teste passaria sem nunca exercitar a guarda do
+    // sincronizador, que é o que ele existe para verificar.
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: repository,
+      authGateway: semSessao,
+    );
+
+    await synchronizer.drain();
+
+    expect(repository.createdSessions, isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isNotEmpty);
   });
 }
 

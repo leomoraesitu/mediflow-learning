@@ -394,6 +394,57 @@ grep -rln "package:firebase_auth" apps/mobile/lib
 
 `composeDependencies` continua pura: ela **recebe** o `AuthGateway`, e quem constrói o `FirebaseAuthGateway` é o `main()`. Uma instância só, compartilhada entre o provedor de token e o portão.
 
+### Dados locais por usuário (Aula 55)
+
+A Aula 54 tornou possível haver duas contas no mesmo aparelho, e com isso criou um defeito que não existia: o banco não sabia de quem era cada linha. A sessão vivia numa tabela de registro único (`id = 1`) e as consultas de outbox não filtravam por dono — então o drenador de B reenviaria a compra pendente de A com o token de B, e o backend a aceitaria, porque o dono vem do token.
+
+`userId` virou coluna nas duas tabelas e os sete métodos do banco passaram a exigi-lo. A decisão completa está na [ADR 0001](../../docs/adr/0001-offline-first-scope-and-limits.md).
+
+#### A chave do outbox não é o dono
+
+```dart
+@override
+Set<Column<Object>> get primaryKey => {idempotencyKey};
+```
+
+Trocar por `{userId}` parece natural e desfaz a garantia central do projeto: o outbox é uma **fila**, e com o dono como chave `insertOnConflictUpdate` sobrescreve — enfileirar a segunda compra apaga a primeira.
+
+#### Três formas de saber de quem é
+
+`DriftCheckoutSessionStorage` recebe o `uid` no construtor: ela nasce numa navegação e não sobrevive à troca de usuário. `OutboxCheckoutRepository` e `OutboxSynchronizer` leem `authGateway.currentUser` a cada uso, porque vivem o processo inteiro. E `hasPendingSync` virou `Stream<bool> Function(String)`, porque o fluxo depende do usuário e a composição roda antes de haver sessão.
+
+O `uid` desce do portão: `authenticatedHome` passou a ser `Widget Function(AuthUser)`.
+
+#### O fluxo é criado uma vez, não a cada `build`
+
+`BenefitsHomePage` virou `StatefulWidget` com `late final _hasPendingSync`. Criar o fluxo dentro do `build` faria o `StreamBuilder` reassinar a cada reconstrução do pai, vazando uma consulta de banco por volta.
+
+O teste que guarda isso precisa reconstruir o **pai** com `pumpWidget`, e não apenas bombar: o `StreamBuilder` do indicador reconstrói a si mesmo, então o `build` da tela não roda de novo sozinho.
+
+#### A migração v2 → v3
+
+Degraus cumulativos (`from < n`), e não `from == n`: um aparelho na v1 indo para a v3 precisa passar pelos dois. A v3 apaga as linhas existentes, que não têm dono possível — entregá-las a quem entrar primeiro no aparelho seria pior do que perdê-las.
+
+Os testes de migração ficam em `checkout_database_migration_test.dart` e montam o schema antigo pelo `setup:` do `NativeDatabase` — o único ponto que roda **antes** de o Drift consultar `user_version` e escolher entre `onCreate` e `onUpgrade`. Montá-lo com `customStatement` depois de abrir não funciona: a essa altura o Drift já criou as tabelas na versão atual.
+
+#### Verificação por quebra
+
+| Sabotagem | Único vermelho |
+| --- | --- |
+| `readPendingOutboxEvents` sem filtro de dono | `does not return another user's pending events` |
+| `readCheckoutSession` sem filtro de dono | `keeps one checkout session per user` |
+| `removeOutboxEvent` ignorando o dono | `removing an event of one user leaves the other untouched` |
+| `onUpgrade` com `from ==` | `creates the outbox table when migrating from version 1` |
+| repositório guardando o dono no construtor | `enqueues under the user signed in at the time of the call` |
+| sincronizador drenando sem sessão | `skips draining when nobody is authenticated` |
+| tela criando o fluxo a cada `build` | `shows the pending sync indicator on the benefits screen` |
+
+Antes dos testes de isolamento, **as três primeiras passavam despercebidas**: todos os testes do banco usavam um `uid` só, e um filtro que sempre casa é indistinguível de filtro nenhum.
+
+#### Um limite dos testes de widget
+
+`pending_sync_test.dart` usa um esboço de fluxo, e não `database.watchHasPendingSync`. `testWidgets` roda num relógio falso, e as consultas reativas do Drift dependem de assincronia real que o `pump` não avança — com o fluxo real o teste trava. O escopo por usuário no banco tem cobertura própria; o que o teste de widget verifica é que a tela pergunta pelo usuário certo, e uma vez só.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:

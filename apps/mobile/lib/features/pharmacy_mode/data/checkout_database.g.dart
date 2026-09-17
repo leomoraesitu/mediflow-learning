@@ -9,14 +9,14 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $CheckoutSessionRecordsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
     aliasedName,
     false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _payloadMeta = const VerificationMeta('payload');
   @override
@@ -28,7 +28,7 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, payload];
+  List<GeneratedColumn> get $columns => [userId, payload];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -41,8 +41,10 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta, userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
     }
     if (data.containsKey('payload')) {
       context.handle(_payloadMeta, payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta));
@@ -53,12 +55,15 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {userId};
   @override
   CheckoutSessionRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CheckoutSessionRecord(
-      id: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
       payload: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
@@ -73,25 +78,25 @@ class $CheckoutSessionRecordsTable extends CheckoutSessionRecords
 }
 
 class CheckoutSessionRecord extends DataClass implements Insertable<CheckoutSessionRecord> {
-  final int id;
+  final String userId;
   final String payload;
-  const CheckoutSessionRecord({required this.id, required this.payload});
+  const CheckoutSessionRecord({required this.userId, required this.payload});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['user_id'] = Variable<String>(userId);
     map['payload'] = Variable<String>(payload);
     return map;
   }
 
   CheckoutSessionRecordsCompanion toCompanion(bool nullToAbsent) {
-    return CheckoutSessionRecordsCompanion(id: Value(id), payload: Value(payload));
+    return CheckoutSessionRecordsCompanion(userId: Value(userId), payload: Value(payload));
   }
 
   factory CheckoutSessionRecord.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CheckoutSessionRecord(
-      id: serializer.fromJson<int>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
       payload: serializer.fromJson<String>(json['payload']),
     );
   }
@@ -99,16 +104,16 @@ class CheckoutSessionRecord extends DataClass implements Insertable<CheckoutSess
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'userId': serializer.toJson<String>(userId),
       'payload': serializer.toJson<String>(payload),
     };
   }
 
-  CheckoutSessionRecord copyWith({int? id, String? payload}) =>
-      CheckoutSessionRecord(id: id ?? this.id, payload: payload ?? this.payload);
+  CheckoutSessionRecord copyWith({String? userId, String? payload}) =>
+      CheckoutSessionRecord(userId: userId ?? this.userId, payload: payload ?? this.payload);
   CheckoutSessionRecord copyWithCompanion(CheckoutSessionRecordsCompanion data) {
     return CheckoutSessionRecord(
-      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
       payload: data.payload.present ? data.payload.value : this.payload,
     );
   }
@@ -116,48 +121,72 @@ class CheckoutSessionRecord extends DataClass implements Insertable<CheckoutSess
   @override
   String toString() {
     return (StringBuffer('CheckoutSessionRecord(')
-          ..write('id: $id, ')
+          ..write('userId: $userId, ')
           ..write('payload: $payload')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, payload);
+  int get hashCode => Object.hash(userId, payload);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is CheckoutSessionRecord && other.id == this.id && other.payload == this.payload);
+      (other is CheckoutSessionRecord &&
+          other.userId == this.userId &&
+          other.payload == this.payload);
 }
 
 class CheckoutSessionRecordsCompanion extends UpdateCompanion<CheckoutSessionRecord> {
-  final Value<int> id;
+  final Value<String> userId;
   final Value<String> payload;
+  final Value<int> rowid;
   const CheckoutSessionRecordsCompanion({
-    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
     this.payload = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
-  CheckoutSessionRecordsCompanion.insert({this.id = const Value.absent(), required String payload})
-    : payload = Value(payload);
+  CheckoutSessionRecordsCompanion.insert({
+    required String userId,
+    required String payload,
+    this.rowid = const Value.absent(),
+  }) : userId = Value(userId),
+       payload = Value(payload);
   static Insertable<CheckoutSessionRecord> custom({
-    Expression<int>? id,
+    Expression<String>? userId,
     Expression<String>? payload,
+    Expression<int>? rowid,
   }) {
-    return RawValuesInsertable({if (id != null) 'id': id, if (payload != null) 'payload': payload});
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (payload != null) 'payload': payload,
+      if (rowid != null) 'rowid': rowid,
+    });
   }
 
-  CheckoutSessionRecordsCompanion copyWith({Value<int>? id, Value<String>? payload}) {
-    return CheckoutSessionRecordsCompanion(id: id ?? this.id, payload: payload ?? this.payload);
+  CheckoutSessionRecordsCompanion copyWith({
+    Value<String>? userId,
+    Value<String>? payload,
+    Value<int>? rowid,
+  }) {
+    return CheckoutSessionRecordsCompanion(
+      userId: userId ?? this.userId,
+      payload: payload ?? this.payload,
+      rowid: rowid ?? this.rowid,
+    );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
     }
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -165,8 +194,9 @@ class CheckoutSessionRecordsCompanion extends UpdateCompanion<CheckoutSessionRec
   @override
   String toString() {
     return (StringBuffer('CheckoutSessionRecordsCompanion(')
-          ..write('id: $id, ')
-          ..write('payload: $payload')
+          ..write('userId: $userId, ')
+          ..write('payload: $payload, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -177,6 +207,15 @@ class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable,
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $OutboxEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _idempotencyKeyMeta = const VerificationMeta('idempotencyKey');
   @override
   late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
@@ -215,7 +254,7 @@ class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable,
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [idempotencyKey, operationType, payload, createdAt];
+  List<GeneratedColumn> get $columns => [userId, idempotencyKey, operationType, payload, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -228,6 +267,11 @@ class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta, userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
     if (data.containsKey('idempotency_key')) {
       context.handle(
         _idempotencyKeyMeta,
@@ -264,6 +308,10 @@ class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable,
   OutboxEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return OutboxEvent(
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
       idempotencyKey: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}idempotency_key'],
@@ -290,11 +338,13 @@ class $OutboxEventsTable extends OutboxEvents with TableInfo<$OutboxEventsTable,
 }
 
 class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
+  final String userId;
   final String idempotencyKey;
   final String operationType;
   final String payload;
   final DateTime createdAt;
   const OutboxEvent({
+    required this.userId,
     required this.idempotencyKey,
     required this.operationType,
     required this.payload,
@@ -303,6 +353,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
     map['idempotency_key'] = Variable<String>(idempotencyKey);
     map['operation_type'] = Variable<String>(operationType);
     map['payload'] = Variable<String>(payload);
@@ -312,6 +363,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
 
   OutboxEventsCompanion toCompanion(bool nullToAbsent) {
     return OutboxEventsCompanion(
+      userId: Value(userId),
       idempotencyKey: Value(idempotencyKey),
       operationType: Value(operationType),
       payload: Value(payload),
@@ -322,6 +374,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   factory OutboxEvent.fromJson(Map<String, dynamic> json, {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutboxEvent(
+      userId: serializer.fromJson<String>(json['userId']),
       idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
       operationType: serializer.fromJson<String>(json['operationType']),
       payload: serializer.fromJson<String>(json['payload']),
@@ -332,6 +385,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
       'idempotencyKey': serializer.toJson<String>(idempotencyKey),
       'operationType': serializer.toJson<String>(operationType),
       'payload': serializer.toJson<String>(payload),
@@ -340,11 +394,13 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   }
 
   OutboxEvent copyWith({
+    String? userId,
     String? idempotencyKey,
     String? operationType,
     String? payload,
     DateTime? createdAt,
   }) => OutboxEvent(
+    userId: userId ?? this.userId,
     idempotencyKey: idempotencyKey ?? this.idempotencyKey,
     operationType: operationType ?? this.operationType,
     payload: payload ?? this.payload,
@@ -352,6 +408,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   );
   OutboxEvent copyWithCompanion(OutboxEventsCompanion data) {
     return OutboxEvent(
+      userId: data.userId.present ? data.userId.value : this.userId,
       idempotencyKey: data.idempotencyKey.present ? data.idempotencyKey.value : this.idempotencyKey,
       operationType: data.operationType.present ? data.operationType.value : this.operationType,
       payload: data.payload.present ? data.payload.value : this.payload,
@@ -362,6 +419,7 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   @override
   String toString() {
     return (StringBuffer('OutboxEvent(')
+          ..write('userId: $userId, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('operationType: $operationType, ')
           ..write('payload: $payload, ')
@@ -371,11 +429,12 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
   }
 
   @override
-  int get hashCode => Object.hash(idempotencyKey, operationType, payload, createdAt);
+  int get hashCode => Object.hash(userId, idempotencyKey, operationType, payload, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OutboxEvent &&
+          other.userId == this.userId &&
           other.idempotencyKey == this.idempotencyKey &&
           other.operationType == this.operationType &&
           other.payload == this.payload &&
@@ -383,12 +442,14 @@ class OutboxEvent extends DataClass implements Insertable<OutboxEvent> {
 }
 
 class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
+  final Value<String> userId;
   final Value<String> idempotencyKey;
   final Value<String> operationType;
   final Value<String> payload;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const OutboxEventsCompanion({
+    this.userId = const Value.absent(),
     this.idempotencyKey = const Value.absent(),
     this.operationType = const Value.absent(),
     this.payload = const Value.absent(),
@@ -396,15 +457,18 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
     this.rowid = const Value.absent(),
   });
   OutboxEventsCompanion.insert({
+    required String userId,
     required String idempotencyKey,
     required String operationType,
     required String payload,
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : idempotencyKey = Value(idempotencyKey),
+  }) : userId = Value(userId),
+       idempotencyKey = Value(idempotencyKey),
        operationType = Value(operationType),
        payload = Value(payload);
   static Insertable<OutboxEvent> custom({
+    Expression<String>? userId,
     Expression<String>? idempotencyKey,
     Expression<String>? operationType,
     Expression<String>? payload,
@@ -412,6 +476,7 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
       if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
       if (operationType != null) 'operation_type': operationType,
       if (payload != null) 'payload': payload,
@@ -421,6 +486,7 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
   }
 
   OutboxEventsCompanion copyWith({
+    Value<String>? userId,
     Value<String>? idempotencyKey,
     Value<String>? operationType,
     Value<String>? payload,
@@ -428,6 +494,7 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
     Value<int>? rowid,
   }) {
     return OutboxEventsCompanion(
+      userId: userId ?? this.userId,
       idempotencyKey: idempotencyKey ?? this.idempotencyKey,
       operationType: operationType ?? this.operationType,
       payload: payload ?? this.payload,
@@ -439,6 +506,9 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
     if (idempotencyKey.present) {
       map['idempotency_key'] = Variable<String>(idempotencyKey.value);
     }
@@ -460,6 +530,7 @@ class OutboxEventsCompanion extends UpdateCompanion<OutboxEvent> {
   @override
   String toString() {
     return (StringBuffer('OutboxEventsCompanion(')
+          ..write('userId: $userId, ')
           ..write('idempotencyKey: $idempotencyKey, ')
           ..write('operationType: $operationType, ')
           ..write('payload: $payload, ')
@@ -485,9 +556,17 @@ abstract class _$CheckoutDatabase extends GeneratedDatabase {
 }
 
 typedef $$CheckoutSessionRecordsTableCreateCompanionBuilder =
-    CheckoutSessionRecordsCompanion Function({Value<int> id, required String payload});
+    CheckoutSessionRecordsCompanion Function({
+      required String userId,
+      required String payload,
+      Value<int> rowid,
+    });
 typedef $$CheckoutSessionRecordsTableUpdateCompanionBuilder =
-    CheckoutSessionRecordsCompanion Function({Value<int> id, Value<String> payload});
+    CheckoutSessionRecordsCompanion Function({
+      Value<String> userId,
+      Value<String> payload,
+      Value<int> rowid,
+    });
 
 class $$CheckoutSessionRecordsTableFilterComposer
     extends Composer<_$CheckoutDatabase, $CheckoutSessionRecordsTable> {
@@ -498,8 +577,8 @@ class $$CheckoutSessionRecordsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => ColumnFilters(column));
@@ -514,8 +593,8 @@ class $$CheckoutSessionRecordsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => ColumnOrderings(column));
@@ -530,7 +609,8 @@ class $$CheckoutSessionRecordsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
 
   GeneratedColumn<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => column);
@@ -568,13 +648,20 @@ class $$CheckoutSessionRecordsTableTableManager
           createComputedFieldComposer: () =>
               $$CheckoutSessionRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> userId = const Value.absent(),
             Value<String> payload = const Value.absent(),
-          }) => CheckoutSessionRecordsCompanion(id: id, payload: payload),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String payload,
-          }) => CheckoutSessionRecordsCompanion.insert(id: id, payload: payload),
+            Value<int> rowid = const Value.absent(),
+          }) => CheckoutSessionRecordsCompanion(userId: userId, payload: payload, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String userId,
+                required String payload,
+                Value<int> rowid = const Value.absent(),
+              }) => CheckoutSessionRecordsCompanion.insert(
+                userId: userId,
+                payload: payload,
+                rowid: rowid,
+              ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
@@ -610,6 +697,7 @@ typedef $$CheckoutSessionRecordsTableProcessedTableManager =
       PrefetchHooks Function()
     >;
 typedef $$OutboxEventsTableCreateCompanionBuilder = OutboxEventsCompanion Function({
+  required String userId,
   required String idempotencyKey,
   required String operationType,
   required String payload,
@@ -617,6 +705,7 @@ typedef $$OutboxEventsTableCreateCompanionBuilder = OutboxEventsCompanion Functi
   Value<int> rowid,
 });
 typedef $$OutboxEventsTableUpdateCompanionBuilder = OutboxEventsCompanion Function({
+  Value<String> userId,
   Value<String> idempotencyKey,
   Value<String> operationType,
   Value<String> payload,
@@ -632,6 +721,9 @@ class $$OutboxEventsTableFilterComposer extends Composer<_$CheckoutDatabase, $Ou
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get idempotencyKey =>
       $composableBuilder(column: $table.idempotencyKey, builder: (column) => ColumnFilters(column));
 
@@ -653,6 +745,9 @@ class $$OutboxEventsTableOrderingComposer extends Composer<_$CheckoutDatabase, $
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get idempotencyKey => $composableBuilder(
     column: $table.idempotencyKey,
     builder: (column) => ColumnOrderings(column),
@@ -679,6 +774,9 @@ class $$OutboxEventsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
   GeneratedColumn<String> get idempotencyKey =>
       $composableBuilder(column: $table.idempotencyKey, builder: (column) => column);
 
@@ -718,12 +816,14 @@ class $$OutboxEventsTableTableManager
               $$OutboxEventsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> userId = const Value.absent(),
                 Value<String> idempotencyKey = const Value.absent(),
                 Value<String> operationType = const Value.absent(),
                 Value<String> payload = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxEventsCompanion(
+                userId: userId,
                 idempotencyKey: idempotencyKey,
                 operationType: operationType,
                 payload: payload,
@@ -732,12 +832,14 @@ class $$OutboxEventsTableTableManager
               ),
           createCompanionCallback:
               ({
+                required String userId,
                 required String idempotencyKey,
                 required String operationType,
                 required String payload,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxEventsCompanion.insert(
+                userId: userId,
                 idempotencyKey: idempotencyKey,
                 operationType: operationType,
                 payload: payload,

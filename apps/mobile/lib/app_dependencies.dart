@@ -29,7 +29,7 @@ final class AppDependencies {
   final MedicationRepository medicationRepository;
   final OutboxSynchronizer synchronizer;
   final OperationalSettings settings;
-  final Stream<bool> hasPendingSync;
+  final Stream<bool> Function(String userId) hasPendingSync;
   final OutboxSyncScheduler scheduler;
   final AuthGateway authGateway;
 
@@ -66,6 +66,7 @@ AppDependencies composeDependencies({
   final outboxCheckoutRepository = OutboxCheckoutRepository(
     inner: DioCheckoutRepository(apiClient: apiClient),
     database: database,
+    authGateway: authGateway,
   );
 
   // Uma instância só, compartilhada entre o grafo e o agendador — e isso é
@@ -80,6 +81,7 @@ AppDependencies composeDependencies({
   final synchronizer = OutboxSynchronizer(
     database: database,
     checkoutRepository: outboxCheckoutRepository,
+    authGateway: authGateway,
   );
 
   return AppDependencies(
@@ -98,7 +100,10 @@ AppDependencies composeDependencies({
     ),
     synchronizer: synchronizer,
     settings: settings,
-    hasPendingSync: database.watchHasPendingSync(),
+    // Uma função, e não um fluxo pronto: o fluxo depende de quem está
+    // autenticado, e a composição roda antes de haver alguém. Quem tem o
+    // `uid` — a tela por trás do portão — é quem chama.
+    hasPendingSync: database.watchHasPendingSync,
     scheduler: OutboxSyncScheduler(StreamGroup.merge(syncTriggers), drain: synchronizer.drain),
     authGateway: authGateway,
   );

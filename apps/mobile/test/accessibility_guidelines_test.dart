@@ -15,6 +15,7 @@ void main() {
     final semanticsHandle = tester.ensureSemantics();
     final database = CheckoutDatabase(NativeDatabase.memory());
     final checkoutRepository = OutboxCheckoutRepository(
+      authGateway: _autenticado(),
       inner: DemoCheckoutRepository(),
       database: database,
     );
@@ -23,6 +24,7 @@ void main() {
     try {
       await tester.pumpWidget(
         MainApp(
+          hasPendingSync: (_) => const Stream<bool>.empty(),
           authGateway: _autenticado(),
           database: database,
           checkoutRepository: checkoutRepository,

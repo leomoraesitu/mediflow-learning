@@ -22,11 +22,13 @@ void main() {
     final database = CheckoutDatabase(NativeDatabase.memory());
 
     final checkoutRepository = OutboxCheckoutRepository(
+      authGateway: _autenticado(),
       inner: DemoCheckoutRepository(),
       database: database,
     );
     await tester.pumpWidget(
       MainApp(
+        hasPendingSync: (_) => const Stream<bool>.empty(),
         authGateway: _autenticado(),
         database: database,
         checkoutRepository: checkoutRepository,
@@ -64,11 +66,13 @@ void main() {
       final database = CheckoutDatabase(NativeDatabase.memory());
 
       final checkoutRepository = OutboxCheckoutRepository(
+        authGateway: _autenticado(),
         inner: DemoCheckoutRepository(),
         database: database,
       );
       await tester.pumpWidget(
         MainApp(
+          hasPendingSync: (_) => const Stream<bool>.empty(),
           authGateway: _autenticado(),
           database: database,
           checkoutRepository: checkoutRepository,

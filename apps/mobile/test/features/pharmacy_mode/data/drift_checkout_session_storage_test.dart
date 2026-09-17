@@ -12,7 +12,7 @@ void main() {
 
   setUp(() {
     database = CheckoutDatabase(NativeDatabase.memory());
-    storage = DriftCheckoutSessionStorage(database);
+    storage = DriftCheckoutSessionStorage(database, 'usuario-de-teste');
   });
 
   tearDown(() => database.close());
@@ -38,6 +38,12 @@ void main() {
     await storage.save(_snapshot('session-03', 12000));
 
     await storage.clear();
+
+    expect(await storage.load(), isNull);
+  });
+  test('does not read the session of another user', () async {
+    final otherUserStorage = DriftCheckoutSessionStorage(database, 'outro-usuario');
+    await otherUserStorage.save(_snapshot('session-04', 5000));
 
     expect(await storage.load(), isNull);
   });

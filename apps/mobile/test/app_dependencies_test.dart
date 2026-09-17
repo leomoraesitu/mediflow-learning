@@ -12,8 +12,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_session_sna
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/observability/performance_tracer.dart';
 
-import 'features/pharmacy_mode/data/remote/fake_http_client_adapter.dart';
+import 'package:mediflow_mobile/config/auth_user.dart';
+
 import 'config/fake_auth_gateway.dart';
+import 'features/pharmacy_mode/data/remote/fake_http_client_adapter.dart';
 
 void main() {
   late CheckoutDatabase database;
@@ -43,7 +45,7 @@ void main() {
     addTearDown(() => dio.close(force: true));
 
     dependencies = composeDependencies(
-      authGateway: FakeAuthGateway(),
+      authGateway: _autenticado(),
       database: database,
       apiClient: CheckoutApiClient.withDio(
         dio,
@@ -76,6 +78,7 @@ void main() {
         ),
       ).toMap(),
     ),
+    userId: 'usuario-a',
   );
 
   CheckoutSession session() => CheckoutSession(
@@ -101,20 +104,24 @@ void main() {
       throwsA(isA<Exception>()),
     );
 
-    final pendingEvents = await database.readPendingOutboxEvents();
+    final pendingEvents = await database.readPendingOutboxEvents('usuario-a');
 
     expect(pendingEvents, hasLength(1));
     expect(pendingEvents.single.idempotencyKey, 'key-01');
   });
 
   test('derives the pending sync stream from the given database', () async {
-    final expectation = expectLater(dependencies.hasPendingSync, emitsInOrder([false, true]));
+    final expectation = expectLater(
+      dependencies.hasPendingSync('usuario-a'),
+      emitsInOrder([false, true]),
+    );
 
     await pumpEventQueue();
     await database.enqueueOutboxEvent(
       idempotencyKey: 'key-02',
       operationType: 'createCheckout',
       payload: '{}',
+      userId: 'usuario-a',
     );
 
     await expectation;
@@ -133,7 +140,7 @@ void main() {
     addTearDown(() => dio.close(force: true));
 
     final localDependencies = composeDependencies(
-      authGateway: FakeAuthGateway(),
+      authGateway: _autenticado(),
       database: localDatabase,
       apiClient: CheckoutApiClient.withDio(
         dio,
@@ -162,11 +169,12 @@ void main() {
           '{"id":"session-id","availableBalanceInCents":1000,"prescription":null,'
           '"medications":[],"status":"creatingPayment","remoteCheckoutId":null,'
           '"retryTargetStatus":null,"statusMessage":null,"idempotencyKey":"key-03"}',
+      userId: 'usuario-a',
     );
 
     await localDependencies.synchronizer.drain();
 
-    expect(await localDatabase.readPendingOutboxEvents(), isEmpty);
+    expect(await localDatabase.readPendingOutboxEvents('usuario-a'), isEmpty);
     expect(tracer.calls, isEmpty);
   });
   test('wires the scheduler to the given triggers', () async {
@@ -192,7 +200,7 @@ void main() {
     // que chamou o sincronizador, que usou o repositório com o outbox, que
     // falou com o cliente HTTP. Sem o gatilho ligado, ninguém drena — então
     // aqui a fila vazia é uma asserção com significado.
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
   test('sends each event once when a trigger overlaps the startup drain', () async {
     // Uma resposta só, de propósito: com dois sincronizadores independentes
@@ -226,7 +234,7 @@ void main() {
     // ela que prova que o grafo monta **um** sincronizador: com dois, os dois
     // laços leem a mesma fila e ambos enviam.
     expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(1));
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
   test('drains on a trigger from any source', () async {
     fakeAdapter.mockedResponses['/checkouts'] = [
@@ -258,7 +266,7 @@ void main() {
     await pumpEventQueue();
     expect(fakeAdapter.capturedHeaders['/checkouts'], hasLength(2));
 
-    expect(await database.readPendingOutboxEvents(), isEmpty);
+    expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
   test('wraps each repository with the given tracer', () async {
     fakeAdapter.mockedResponses['/checkouts'] = [
@@ -314,4 +322,11 @@ final class _FakePerformanceTracer implements PerformanceTracer {
     calls.add(name);
     return action();
   }
+}
+
+/// O grafo do outbox exige um dono: `OutboxCheckoutRepository.create` lança se
+/// não houver ninguém autenticado. Um `FakeAuthGateway()` cru faria os testes
+/// de composição verificarem o caminho de erro sem dizer isso.
+FakeAuthGateway _autenticado() {
+  return FakeAuthGateway()..currentUserValue = const AuthUser(uid: 'usuario-a', isAnonymous: false);
 }
