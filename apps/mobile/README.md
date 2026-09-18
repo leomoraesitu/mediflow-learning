@@ -515,6 +515,30 @@ O observador lê por destrutura tipado, não por `as`. Se o tipo mudar de novo, 
 
 E comparar `('checkout_step', {'step': 3})` falhou com *"esperado e obtido idênticos"*: registros têm igualdade estrutural só se os campos tiverem, e `Map` não tem. Mesma armadilha do `CheckoutSession` sem `==` que motivou a Aula 51.
 
+### A fiação que ninguém testava (Aula 58)
+
+Segundo defeito encontrado **rodando o aplicativo**, e da mesma família do primeiro.
+
+O `runApp` passava `hasPendingSync: (_) => const Stream<bool>.empty()` em vez de `dependencies.hasPendingSync`. O indicador de compra pendente nunca funcionaria em produção — e entrou no commit da Aula 55, com portão verde e 200 testes.
+
+#### Por que a suíte não via
+
+`main()` copiava sete campos do grafo à mão, e **nenhum teste executa `main()`**. Todos os testes de widget constroem `MainApp` com os próprios esboços, então a cópia real nunca era exercitada.
+
+#### A correção elimina a oportunidade, não só o defeito
+
+```dart
+runApp(MainApp.from(dependencies));
+```
+
+`MainApp.from` é o único ponto que copia o grafo para a árvore, e `main_app_wiring_test.dart` verifica com `same` — não `equals` — que **a instância do grafo** chegou à árvore, e não algo equivalente construído no caminho.
+
+O segundo teste é o que distingue um esboço da coisa real: enfileira um evento e afirma que o fluxo emite `true`. Um `Stream.empty()` nunca emitiria.
+
+#### A regra que os dois defeitos ensinam
+
+O composition root é código como qualquer outro, e a parte dele que copia valores é a mais fácil de errar e a mais difícil de ver. Duas peças ficaram fora do alcance da suíte pela mesma razão: **não eram alcançáveis a partir de um teste** — o observador por ser um objeto global, a fiação por viver dentro de `main()`.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:
