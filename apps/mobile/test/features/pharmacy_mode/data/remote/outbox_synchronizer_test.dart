@@ -404,6 +404,47 @@ void main() {
     expect(repository.createdSessions, hasLength(1));
     expect(await database.readPendingOutboxEvents('usuario-a'), isEmpty);
   });
+  test('keeps the pending events when the user signs out', () async {
+    final database = CheckoutDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final session = CheckoutSession(
+      id: 'session-id',
+      availableBalanceInCents: 1000,
+      prescription: null,
+      medications: [],
+      status: CheckoutStatus.creatingPayment,
+      idempotencyKey: 'key-01',
+    );
+
+    final gateway = comUsuario('usuario-a');
+    addTearDown(gateway.dispose);
+
+    await database.enqueueOutboxEvent(
+      userId: 'usuario-a',
+      idempotencyKey: 'key-01',
+      operationType: 'createCheckout',
+      payload: jsonEncode(CheckoutSessionSnapshot.fromDomain(session).toMap()),
+    );
+
+    // Sair é o que a Aula 55 decidiu preservar: a compra pendente de quem
+    // saiu continua no banco e volta a drenar quando essa pessoa entrar de
+    // novo. O risco usual dessa escolha — reenviar o evento de um dono com o
+    // token de outro — não existe aqui, porque o drenador lê `currentUser` e
+    // consulta só a fila desse usuário.
+    await gateway.signOut();
+
+    final synchronizer = OutboxSynchronizer(
+      database: database,
+      checkoutRepository: _FakeCheckoutRepository(createdCheckoutId: 'remote-01'),
+      authGateway: gateway,
+    );
+
+    await synchronizer.drain();
+
+    expect(await database.readPendingOutboxEvents('usuario-a'), hasLength(1));
+  });
+
   test('skips draining when nobody is authenticated', () async {
     final database = CheckoutDatabase(NativeDatabase.memory());
     addTearDown(database.close);

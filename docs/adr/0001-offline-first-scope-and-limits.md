@@ -243,6 +243,40 @@ O risco que essa escolha costuma trazer — reenviar evento de um dono com o tok
 
 Sem sessão, `_drainOnce` retorna sem ler nada. Os três gatilhos continuam disparando; o que fazer com eles quando não há ninguém autenticado é a Aula 56.
 
+### As duas dívidas do Bloco B, fechadas (Aula 56)
+
+#### O laço de 401
+
+A Aula 53 deixou registrado que devolver `null` para uma conta rejeitada faria a requisição sair **sem** `Authorization`, garantindo `401` — e, com os três gatilhos do outbox, um laço.
+
+O interceptor agora **rejeita** em vez de seguir:
+
+```dart
+if (token == null) {
+  return handler.reject(
+    DioException(requestOptions: options, type: DioExceptionType.cancel),
+  );
+}
+```
+
+`cancel` descreve o que aconteceu e o classificador da Aula 27 o mapeia para `UnknownFailure`, que não é transitória. Duas barreiras independentes impedem a retentativa: essa classificação, e o fato de `handler.reject` não chamar os interceptores de erro seguintes por padrão. Qualquer uma sozinha basta — medido por quebra: desligando a segunda, nenhum teste cai, porque a primeira segura.
+
+**Isso reverteu uma decisão da Aula 36.** O teste `sends the request without an Authorization header when there is no token` afirmava exatamente o comportamento agora removido, e foi apagado. Na época existia só a sessão anônima, e uma requisição sem credencial era um acidente raro; com contas e recuperação que pode terminar sem identidade, virou o caminho comum.
+
+#### Os gatilhos sem sessão
+
+A recusa ficou no `OutboxSynchronizer`, e não no `OutboxSyncScheduler`. O agendador não conhece autenticação: os três gatilhos disparam de qualquer jeito, e quem recusa é o único ponto que já precisa do `uid` para ler a fila certa. Consultar a sessão no agendador seria uma segunda decisão sobre a mesma coisa, no lugar que menos sabe a respeito dela.
+
+Retornar sem drenar **preserva** a fila de quem saiu, que é a decisão da Aula 55. O teste `keeps the pending events when the user signs out` a guarda: trocar o retorno por uma limpeza da tabela o derruba.
+
+#### A redundância que ficou
+
+Com o interceptor rejeitando, o `StateError` de `OutboxCheckoutRepository.create` ficou inalcançável pelo fluxo normal — a tela de checkout só existe atrás do portão. Foi mantido como defesa em profundidade, e o motivo está no código: `create` grava no banco **antes** de tentar a rede, então um chamador fora do portão enfileiraria um evento sem dono, que nenhum drenador leria e nenhuma tela mostraria.
+
+#### Sair
+
+`AuthGateway.signOut` existia desde a Aula 41 sem chamador na interface. O botão está na tela de benefícios e apenas sinaliza: quem troca a tela é o portão, reagindo a `authStateChanges`. Falha na saída vira `SnackBar`, com o código do provedor registrado em `debugPrint` antes da checagem de `mounted` — se a tela já saiu da árvore, o diagnóstico ainda é gravado.
+
 ## Consequências
 
 - O sistema **não** deve ser descrito como "offline-first" sem qualificação — é local-first na leitura e misto na escrita (query vs. command). A inicialização deixou de ser bloqueante na Aula 42.

@@ -141,6 +141,7 @@ class MainApp extends StatelessWidget {
           prescriptionRepository: prescriptionRepository,
           medicationRepository: medicationRepository,
           hasPendingSync: hasPendingSync,
+          authGateway: authGateway,
         ),
       ),
       theme: AppTheme.light,

@@ -1,6 +1,7 @@
 import 'package:checkout_domain/checkout_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mediflow_mobile/config/auth_gateway.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
@@ -19,6 +20,7 @@ class BenefitsHomePage extends StatefulWidget {
   final MedicationRepository medicationRepository;
   final OperationalSettings settings;
   final Stream<bool> Function(String userId) hasPendingSync;
+  final AuthGateway authGateway;
 
   const BenefitsHomePage({
     super.key,
@@ -30,6 +32,7 @@ class BenefitsHomePage extends StatefulWidget {
     required this.medicationRepository,
     required this.settings,
     required this.hasPendingSync,
+    required this.authGateway,
   });
 
   @override
@@ -80,6 +83,23 @@ class _BenefitsHomePageState extends State<BenefitsHomePage> {
     await cubit.close();
   }
 
+  Future<void> _sair() async {
+    try {
+      await widget.authGateway.signOut();
+    } on AuthGatewayException catch (e) {
+      debugPrint('Falha ao sair: ${e.code}');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível sair. Tente novamente.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -87,7 +107,10 @@ class _BenefitsHomePageState extends State<BenefitsHomePage> {
     final formattedBalance = widget.availableBalance.toStringAsFixed(2).replaceFirst('.', ',');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('MediFlow')),
+      appBar: AppBar(
+        title: const Text('MediFlow'),
+        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _sair, tooltip: 'Sair')],
+      ),
       body: SafeArea(
         child: Column(
           children: [

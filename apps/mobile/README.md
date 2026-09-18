@@ -445,6 +445,45 @@ Antes dos testes de isolamento, **as três primeiras passavam despercebidas**: t
 
 `pending_sync_test.dart` usa um esboço de fluxo, e não `database.watchHasPendingSync`. `testWidgets` roda num relógio falso, e as consultas reativas do Drift dependem de assincronia real que o `pump` não avança — com o fluxo real o teste trava. O escopo por usuário no banco tem cobertura própria; o que o teste de widget verifica é que a tela pergunta pelo usuário certo, e uma vez só.
 
+### Sair, e o contrato do outbox (Aula 56)
+
+Fecha as duas dívidas que o Bloco B deixou nomeadas na [ADR 0001](../../docs/adr/0001-offline-first-scope-and-limits.md).
+
+#### A requisição sem credencial não sai
+
+```dart
+if (token == null) {
+  return handler.reject(
+    DioException(requestOptions: options, type: DioExceptionType.cancel),
+  );
+}
+```
+
+Antes ela saía sem `Authorization` e tomava `401` com certeza — uma ida à rede para descobrir algo já sabido. Com os três gatilhos do outbox, um laço.
+
+Duas barreiras independentes impedem a retentativa, e as duas são redundantes de propósito: `cancel` vira `UnknownFailure`, que `_isTransient` classifica como não-transitória; e `handler.reject` não chama os interceptores de erro seguintes por padrão. Medido: desligando a segunda, nenhum teste cai.
+
+Isso **reverteu** a decisão da Aula 36, e o teste que a documentava foi apagado em vez de consertado.
+
+#### Quem recusa quando não há sessão
+
+O `OutboxSynchronizer`, e não o `OutboxSyncScheduler`. O agendador não conhece autenticação — os gatilhos disparam de qualquer jeito, e a recusa fica no único ponto que já precisa do `uid`.
+
+Retornar sem drenar preserva a fila de quem saiu, conforme a Aula 55.
+
+#### O botão de sair
+
+Na tela de benefícios, em `actions`. Ele apenas sinaliza: quem troca a tela é o portão. Falha vira `SnackBar`, com o código do provedor em `debugPrint` **antes** do `if (!mounted)` — se a tela já saiu, o diagnóstico ainda é gravado.
+
+#### Verificação por quebra
+
+| Sabotagem | Único vermelho |
+| --- | --- |
+| interceptor volta a seguir sem token | `rejects a request when there is no token` |
+| botão deixa de chamar `signOut` | `signs out from the benefits screen` |
+| `catch` do `_sair` some | `shows a message when signing out fails` |
+| sair passa a limpar a fila | `keeps the pending events when the user signs out` |
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:

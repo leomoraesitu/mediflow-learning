@@ -79,9 +79,27 @@ final class CheckoutApiClient {
           }
 
           final token = await tokenProvider();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+
+          // Sem credencial, a requisição não sai. Sem `Authorization` o
+          // backend responde 401 com certeza, e com os três gatilhos do
+          // outbox isso vira laço: cada gatilho gasta uma ida à rede para
+          // descobrir algo que já se sabia antes de sair.
+          //
+          // `cancel` descreve o que aconteceu — cancelada antes de partir — e
+          // o classificador a mapeia para `UnknownFailure`, que não é
+          // transitória. Duas barreiras independentes impedem a retentativa:
+          // essa classificação, e o fato de `reject` não chamar os
+          // interceptores de erro seguintes por padrão.
+          //
+          // Sem `error:`: quem decide o tipo entregue ao chamador é
+          // `NetworkFailure.fromDioException`, que olha só o `type`.
+          if (token == null) {
+            return handler.reject(
+              DioException(requestOptions: options, type: DioExceptionType.cancel),
+            );
           }
+
+          options.headers['Authorization'] = 'Bearer $token';
           handler.next(options);
         },
 
