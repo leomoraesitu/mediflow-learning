@@ -100,17 +100,7 @@ Future<void> main() async {
     crashReporter: FirebaseCrashReporter(crashlytics: FirebaseCrashlytics.instance),
   );
 
-  runApp(
-    MainApp(
-      database: dependencies.database,
-      checkoutRepository: dependencies.checkoutRepository,
-      prescriptionRepository: dependencies.prescriptionRepository,
-      medicationRepository: dependencies.medicationRepository,
-      settings: dependencies.settings,
-      hasPendingSync: (_) => const Stream<bool>.empty(),
-      authGateway: dependencies.authGateway,
-    ),
-  );
+  runApp(MainApp.from(dependencies));
 }
 
 class MainApp extends StatelessWidget {
@@ -132,6 +122,22 @@ class MainApp extends StatelessWidget {
     required this.authGateway,
     required this.hasPendingSync,
   });
+
+  /// O único ponto que copia o grafo para a árvore de widgets.
+  ///
+  /// Antes, `main()` listava os sete campos à mão. Um deles foi trocado por um
+  /// fluxo vazio durante a Aula 55 e ninguém notou: o indicador de pendência
+  /// parou de funcionar em produção, e a suíte não viu porque todo teste
+  /// constrói `MainApp` com os próprios esboços. Aqui a cópia acontece num
+  /// lugar só, e tem teste.
+  MainApp.from(AppDependencies dependencies, {super.key})
+    : database = dependencies.database,
+      checkoutRepository = dependencies.checkoutRepository,
+      prescriptionRepository = dependencies.prescriptionRepository,
+      medicationRepository = dependencies.medicationRepository,
+      settings = dependencies.settings,
+      hasPendingSync = dependencies.hasPendingSync,
+      authGateway = dependencies.authGateway;
 
   @override
   Widget build(BuildContext context) {
