@@ -69,8 +69,13 @@ final class OutboxSynchronizer {
   Future<void> _drainOnce() async {
     final userId = _authGateway.currentUser?.uid;
 
-    // Sem ninguém autenticado não há fila a drenar. Os gatilhos disparam de
-    // qualquer jeito — o que fazer com eles nesse caso é a Aula 56.
+    // Sem ninguém autenticado não há fila a drenar, e a recusa fica aqui por
+    // decisão da Aula 56: os três gatilhos disparam independentemente de
+    // sessão, e este é o único ponto que já precisa do `uid` para ler a fila
+    // certa. Pôr a checagem no agendador seria uma segunda decisão sobre a
+    // mesma coisa, no lugar que menos sabe a respeito dela.
+    //
+    // Retornar preserva a fila de quem saiu — ver ADR 0001.
     if (userId == null) {
       return;
     }

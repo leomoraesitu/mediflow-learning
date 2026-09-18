@@ -40,28 +40,6 @@ void main() {
     expect(capturedHeaders, isNotNull);
     expect(capturedHeaders!['Authorization'], 'Bearer test-token');
   });
-  test('sends the request without an Authorization header when there is no token', () async {
-    fakeAdapter.mockedResponses['/checkouts'] = [
-      ResponseBody.fromString(
-        '{"id": "remote-checkout-id"}',
-        200,
-        headers: {
-          Headers.contentTypeHeader: [Headers.jsonContentType],
-        },
-      ),
-    ];
-
-    final apiClient = CheckoutApiClient.withDio(
-      dio,
-      tokenProvider: ({bool forceRefresh = false}) async => null,
-    );
-
-    await apiClient.post('/checkouts', data: const {});
-
-    final capturedHeaders = fakeAdapter.capturedHeaders['/checkouts']?.first;
-    expect(capturedHeaders, isNotNull);
-    expect(capturedHeaders!['Authorization'], isNull);
-  });
 
   test('retries the request with a renewed token after a 401', ({bool forceRefresh = false}) async {
     fakeAdapter.mockedResponses['/checkouts'] = [
@@ -325,6 +303,27 @@ void main() {
     // do envio. É exatamente o que os logs da function mostraram na Aula 40
     // — nada chega ao servidor, e por isso não existe 401 para acionar a
     // renovação de identidade.
+    expect(fakeAdapter.capturedHeaders['/checkouts'], isNull);
+  });
+  test('rejects a request when there is no token', () async {
+    // Substitui `sends the request without an Authorization header when there
+    // is no token`, da Aula 36, que afirmava o comportamento oposto: naquela
+    // época a requisição saía sem cabeçalho. Ver ADR 0001.
+    final apiClient = CheckoutApiClient.withDio(
+      dio,
+      tokenProvider: ({bool forceRefresh = false}) async => null,
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await expectLater(
+      () => apiClient.post('/checkouts', data: const {}),
+      throwsA(isA<UnknownFailure>()),
+    );
+
+    // Nenhuma requisição saiu — e isso cobre as duas afirmações. Zero
+    // requisições significa que não houve envio *e* que não houve
+    // retentativa; não existe cenário em que uma passe e a outra falhe, e por
+    // isso não há um segundo teste para o retry.
     expect(fakeAdapter.capturedHeaders['/checkouts'], isNull);
   });
 }

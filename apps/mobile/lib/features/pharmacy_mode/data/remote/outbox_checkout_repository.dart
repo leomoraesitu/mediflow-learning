@@ -32,6 +32,13 @@ final class OutboxCheckoutRepository implements CheckoutRepository {
 
     final userId = _authGateway.currentUser?.uid;
 
+    // Inalcançável pelo fluxo normal desde a Aula 56: o interceptor do Dio
+    // rejeita antes de sair, e a tela de checkout só existe atrás do portão.
+    // Fica como defesa em profundidade, porque `create` grava no banco *antes*
+    // de tentar a rede — um chamador fora do portão enfileiraria um evento sem
+    // dono, que nenhum drenador leria e nenhuma tela mostraria.
+    //
+    // Se um dia isto for removido, o interceptor passa a ser a única barreira.
     if (userId == null) {
       throw StateError('Não há usuário autenticado para registrar o checkout.');
     }
