@@ -24,6 +24,9 @@ import 'package:mediflow_mobile/firebase_options.dart';
 import 'package:mediflow_mobile/lifecycle/lifecycle_sync_triggers.dart';
 import 'package:mediflow_mobile/observability/firebase_performance_tracer.dart';
 import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:mediflow_mobile/observability/firebase_analytics_sink.dart';
+import 'package:mediflow_mobile/observability/firebase_crash_reporter.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
@@ -92,7 +95,10 @@ Future<void> main() async {
   // lenta por cobrança duplicada.
   unawaited(dependencies.synchronizer.drain());
   dependencies.scheduler.start();
-  Bloc.observer = CheckoutAnalyticsObserver(FirebaseAnalytics.instance);
+  Bloc.observer = CheckoutAnalyticsObserver(
+    analytics: FirebaseAnalyticsSink(analytics: FirebaseAnalytics.instance),
+    crashReporter: FirebaseCrashReporter(crashlytics: FirebaseCrashlytics.instance),
+  );
 
   runApp(
     MainApp(
