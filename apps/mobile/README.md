@@ -484,6 +484,37 @@ Na tela de benefícios, em `actions`. Ele apenas sinaliza: quem troca a tela é 
 | `catch` do `_sair` some | `shows a message when signing out fails` |
 | sair passa a limpar a fila | `keeps the pending events when the user signs out` |
 
+### O observador que ficou para trás (Aula 57)
+
+Um defeito encontrado **rodando o aplicativo**, não por teste.
+
+A Aula 51 trocou o tipo de estado do `CheckoutCubit` de `CheckoutSession` para `CheckoutViewState`. `CheckoutAnalyticsObserver` lia esse estado com `as CheckoutSession` — um cast verificado em tempo de execução, sobre um `Change` sem argumentos de tipo. O compilador não tinha o que dizer.
+
+```
+Unhandled Exception: type 'CheckoutViewState' is not a subtype
+of type 'CheckoutSession' in type cast
+```
+
+`onChange` roda dentro do `emit`, então a exceção subia antes de a interface receber o estado novo: o botão "Simular leitura" não produzia nada na tela. **Sete aulas, quatro PRs com portão verde, 203 testes.**
+
+#### Por que a suíte não via
+
+`Bloc.observer` é estático e só era atribuído em `main.dart`. E o observador não podia ser instanciado num teste: recebia `FirebaseAnalytics` por construtor mas alcançava `FirebaseCrashlytics.instance` sozinho.
+
+#### As costuras
+
+`AnalyticsSink` e `CrashReporter`, no molde do `PerformanceTracer`, com adaptadores `FirebaseAnalyticsSink` e `FirebaseCrashReporter`. Separadas porque são dois destinos com dois contratos — juntá-las faria um fake imitar as duas para testar uma.
+
+#### Falha fechada
+
+O observador lê por destrutura tipado, não por `as`. Se o tipo mudar de novo, ele para de registrar em vez de derrubar quem observa. Telemetria quebrada tem de virar telemetria ausente.
+
+#### Duas armadilhas no teste
+
+`Bloc.observer` é global: o `tearDown` que o restaura não é higiene, é isolamento — sem ele o observador vaza para os outros arquivos da suíte.
+
+E comparar `('checkout_step', {'step': 3})` falhou com *"esperado e obtido idênticos"*: registros têm igualdade estrutural só se os campos tiverem, e `Map` não tem. Mesma armadilha do `CheckoutSession` sem `==` que motivou a Aula 51.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:

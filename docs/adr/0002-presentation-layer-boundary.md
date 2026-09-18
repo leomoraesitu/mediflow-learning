@@ -78,3 +78,32 @@ O cenário dele é real e não fabricado: `submitPrescription` sem medicamentos 
 **Uma diferença que os testes não conseguem revelar.** O fluxo de `authStateChanges()` é assinado uma vez, num campo, e não a cada `build`. `StreamBuilder` reassina quando o fluxo novo difere do antigo por `!=`; o `stream` de um `StreamController.broadcast` se compara igual entre chamadas, mas o `.map()` do `FirebaseAuthGateway` não. O `FakeAuthGateway` portanto não reproduz o comportamento de produção nesse ponto, e o comentário no código guarda isso.
 
 A validação de campo vazio vive nos formulários, e não no adaptador — foi por isso que ela saiu de `FirebaseAuthGateway` na Aula 53. Os validadores ficam num arquivo compartilhado porque privacidade em Dart é por biblioteca: mantidos privados em cada tela eles foram copiados, e as duas cópias divergiram em um ciclo de edição, uma exigindo seis caracteres e a outra oito.
+
+
+## Adendo — o que a fronteira não alcançou (Aula 57)
+
+A Aula 51 apoiou-se numa propriedade: trocar o tipo de estado do Cubit faz o compilador listar todos os consumidores. A propriedade valeu para os quatro que tinham assinatura tipada, e **falhou para um quinto**.
+
+`CheckoutAnalyticsObserver` lia o estado com `change.currentState as CheckoutSession`. `BlocObserver.onChange` recebe `Change` sem argumentos de tipo, então não havia o que o compilador verificasse — e `as` é justamente a construção que adia a verificação para a execução.
+
+O resultado: o `emit` passou a lançar em toda transição, e como `onChange` roda **dentro** dele, a exceção subia antes de a interface receber o estado novo. O botão de leitura deixou de responder, sem nada na tela. **O fluxo principal do aplicativo ficou quebrado por sete aulas, quatro PRs com portão verde e 203 testes.**
+
+### Por que nenhum teste pegou
+
+`Bloc.observer` é estático e só era atribuído em `main.dart`. Nenhum teste o instalava, então o observador era invisível para a suíte inteira.
+
+E ele não podia ser instalado: recebia `FirebaseAnalytics` por construtor mas alcançava `FirebaseCrashlytics.instance` sozinho, o que exigia Firebase inicializado para instanciá-lo.
+
+### O que mudou
+
+Duas costuras novas, no molde do `PerformanceTracer`: `AnalyticsSink` e `CrashReporter`. São separadas de propósito — um conta o que aconteceu, o outro conta o que deu errado, e juntá-las faria um fake precisar imitar as duas para testar uma.
+
+O observador passou a ler `CheckoutViewState` por destrutura tipado. Se o tipo mudar de novo, ele **para de registrar** em vez de derrubar quem observa: telemetria quebrada tem de virar telemetria ausente.
+
+O evento `checkout_step` passou a carregar `currentStep` no lugar do nome do status. O custo é conhecido e está no código: `validatingPrescription` e `checkingEligibility` são ambos a etapa 2, então o evento deixa de distinguir essas duas transições. Para funil de conversão basta; para depurar onde a validação trava, não.
+
+### A lição sobre o método
+
+Este foi o defeito mais grave do projeto, e ele não foi encontrado por teste — foi encontrado **rodando o aplicativo**, no primeiro toque do primeiro fluxo.
+
+Toda peça alcançada por um objeto global, sem assinatura tipada, está fora do alcance tanto do compilador quanto da suíte. O projeto tem um caso conhecido disso agora, e a defesa é a mesma das outras costuras: se não dá para instanciar num teste, não dá para confiar.
