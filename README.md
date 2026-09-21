@@ -46,133 +46,59 @@ O package `checkout_domain` permanecerá independente de Flutter, Firebase, Dio 
 
 ## Estado atual
 
-> A lista abaixo descreve o repositório até a Aula 28. O trabalho posterior é registrado no README de cada pacote — [`apps/mobile`](apps/mobile/README.md), [`packages/checkout_domain`](packages/checkout_domain/README.md), [`functions`](functions/README.md) — e as decisões de arquitetura ficam em [`docs/adr`](docs/README.md). Até a Aula 53, o repositório acumulou: backend próprio publicado em Cloud Functions com autenticação e autorização por propriedade, outbox local com idempotência ponta a ponta, três gatilhos de sincronização, indicador reativo de pendência, testes de golden, portão de qualidade na CI, camada de apresentação com estado de visão próprio, e uma costura de autenticação que distingue sessão anônima de conta real.
+> Esta seção descreve o repositório **até a Aula 59**. O registro aula a aula — com o raciocínio, as medições e os defeitos encontrados no caminho — fica no README de cada pacote: [`apps/mobile`](apps/mobile/README.md), [`packages/checkout_domain`](packages/checkout_domain/README.md), [`functions`](functions/README.md). As decisões de arquitetura ficam em [`docs/adr`](docs/README.md).
 
-Até a Aula 28, a infraestrutura inicial do monorepo, a primeira interação com estado local, a base visual, os primeiros requisitos de acessibilidade, a navegação inicial, a entrada validada, os modelos fundamentais, a máquina de estados, os contratos de repositório, a integração do estado do checkout com a interface, os primeiros efeitos reativos, o progresso derivado da sessão, os feedbacks de falha e sucesso, as ações de avanço do checkout, a representação serializável da sessão, a fronteira assíncrona de armazenamento e a persistência local com Drift foram criados:
+O aplicativo abre num portão de autenticação. Com conta, mostra uma tela de benefícios com saldo fictício e dá entrada no “Modo Farmácia”, um checkout de quatro etapas: ler o medicamento, validar a receita, verificar elegibilidade e confirmar o pagamento. O fluxo funciona sem rede — uma compra iniciada offline fica registrada e é reenviada sozinha quando a conexão volta, sem cobrar duas vezes.
 
-- repositório e branch de trabalho configurados;
-- diretórios de mobile, painel, domínio, backend e documentação definidos;
-- Pub Workspace configurado para o aplicativo mobile e o package de domínio;
-- fronteira de dependências do domínio protegida por testes;
-- resolução e lockfile compartilhados na raiz;
-- scaffold Flutter Android criado em `apps/mobile`;
-- primeira árvore de widgets executada e validada em um emulador Android;
-- `PharmacyModePage` mantida como `StatefulWidget` para coordenar o formulário, os controllers e o ciclo de vida da rota;
-- apresentação extraída para o `StatelessWidget` `MedicationCounterContent`;
-- fluxo de dados unidirecional exercitado com `count` descendo para o filho e `onScan` retornando como callback;
-- reconstruções e métodos `initState`, `build` e `dispose` instrumentados com logs;
-- hot reload e hot restart verificados durante o desenvolvimento;
-- tema Material 3 centralizado em `AppTheme`, com um `ColorScheme` derivado da cor-base própria do MediFlow;
-- cores e estilos tipográficos consumidos pela árvore por meio de `Theme.of(context)`;
-- escala de espaçamento definida em `AppSpacing`, evitando valores de layout dispersos;
-- componente reutilizável `MediFlowContentCard` criado para padronizar margem, padding e apresentação;
-- largura do conteúdo limitada a 480 pixels lógicos, preservando o aproveitamento de telas estreitas e evitando expansão excessiva em telas largas;
-- rolagem vertical de segurança e respeito às áreas ocupadas por recortes, barras e gestos do sistema;
-- layout validado no emulador Android nas orientações retrato e paisagem, sem overflow;
-- contador exposto às tecnologias assistivas com rótulo estável, valor dinâmico e anúncio de mudanças por meio de `Semantics`;
-- semântica visual duplicada removida do contador com `ExcludeSemantics`;
-- alvo mínimo de 48 por 48 pixels lógicos aplicado globalmente aos botões elevados;
-- interface validada manualmente com fonte ampliada em retrato e paisagem, mantendo conteúdo, contador e botão alcançáveis;
-- teste de widget verificando alvo de toque Android, rótulos dos controles e contraste textual com a Accessibility Guideline API do Flutter;
-- tela inicial `BenefitsHomePage` criada com saldo fictício de R$ 250,00 e entrada explícita no Modo Farmácia;
-- navegação imperativa implementada com `Navigator.push`, `MaterialPageRoute<void>` e retorno pela pilha de rotas;
-- remoção de `PharmacyModePage` validada pela seta da `AppBar` e pelo retorno do Android, com descarte do estado local em `dispose`;
-- indicador reutilizável `CheckoutProgressIndicator` criado com quatro marcadores e `LinearProgressIndicator` determinístico em 25% na primeira etapa;
-- progresso consolidado em um único nó semântico, com rótulo e valor compreensíveis e sem anúncios duplicados dos elementos visuais;
-- testes de widget cobrindo a tela inicial, a abertura do Modo Farmácia, o retorno à tela de benefícios e a recriação do contador com valor inicial;
-- formulário da primeira etapa criado com referência de receita e EAN fictícios, coordenado por `Form` e `GlobalKey<FormState>`;
-- `TextEditingController`s mantidos pelo estado da página e descartados em `dispose`;
-- entrada do EAN restrita a dígitos e ao máximo de 13 caracteres com `FilteringTextInputFormatter` e `LengthLimitingTextInputFormatter`;
-- validação impedindo leituras sem receita, sem EAN ou com EAN diferente de 13 dígitos;
-- ação explícita para preencher um EAN de demonstração sem depender de câmera ou código de barras real;
-- leitura válida incrementando o contador, limpando o EAN, removendo o foco do formulário e apresentando confirmação por `SnackBar`, enquanto a receita permanece disponível para novas leituras;
-- testes de widget cobrindo formulário vazio, EAN incompleto e o fluxo demonstrativo válido;
-- modelos `Prescription`, `Medication`, `CheckoutSession` e `RemoteFlags` implementados como tipos Dart puros com campos finais;
-- valores monetários representados em centavos com `int`, evitando erros de precisão binária de `double`;
-- medicamentos de `CheckoutSession` protegidos por cópia defensiva não modificável com `List.unmodifiable`;
-- `CheckoutStatus` e `DemoScenario` definidos como conjuntos fechados de valores, separando o estado real da sessão dos cenários fictícios da demonstração;
-- `CheckoutEvent` modelado como hierarquia `sealed`, com subtipos capazes de transportar os dados específicos de cada acontecimento;
-- fachada pública do package consolidada em `checkout_domain.dart`, sem exigir imports diretos de `lib/src` pelos consumidores;
-- testes Dart cobrindo preservação de valores, cópia defensiva, rejeição de mutações e pertencimento dos eventos à hierarquia;
-- teste de fronteira independente do diretório de execução, localizando o `pubspec.yaml` do package por `Isolate.resolvePackageUri` e impedindo dependências de Flutter, Firebase, Dio e Drift;
-- `CheckoutStatus.failed` adicionado para distinguir falhas permanentes de `recoverableFailure`;
-- estados terminais definidos como `maintenance`, `failed` e `paid` pela extensão `CheckoutStatusProperties`;
-- classificação terminal implementada com `switch` exaustivo, sem caso curinga, obrigando a revisão da regra quando um novo status for criado;
-- `CheckoutSession` preparada para preservar `remoteCheckoutId`, a etapa interrompida em `retryTargetStatus` e uma mensagem contextual em `statusMessage`;
-- testes Dart cobrindo a preservação do contexto de pagamento e recuperação e a classificação de todos os estados terminais e não terminais;
-- `CheckoutStateMachine` implementada em Dart puro para transformar uma sessão e um evento em um novo snapshot imutável;
-- fluxo de sucesso coberto desde a coleta do medicamento, submissão e validação da receita, elegibilidade e criação do pagamento até a confirmação final;
-- transições inválidas rejeitadas explicitamente por `InvalidCheckoutTransitionException`, preservando o estado original e expondo o status e o evento envolvidos;
-- manutenção tratada como estado terminal, com mensagem contextual e remoção de qualquer possibilidade de retry;
-- falhas recuperáveis preservando a etapa interrompida, a mensagem e o identificador do checkout remoto para retomada segura;
-- retry retornando exatamente à etapa armazenada e limpando o contexto temporário de falha sem recriar o checkout remoto;
-- falhas permanentes encerrando a sessão em `failed`, preservando o identificador remoto e removendo o contexto de recuperação;
-- confirmação assíncrona aceita durante `awaitingConfirmation` ou após uma falha recuperável dessa mesma etapa, sempre vinculada a um `remoteCheckoutId` existente;
-- oito testes da máquina de estados desenvolvidos em ciclos RED → GREEN para sucesso, evento inválido, manutenção, timeout recuperável, retry, falha permanente e confirmação assíncrona;
-- contratos `PrescriptionRepository`, `MedicationRepository` e `CheckoutRepository` definidos como `abstract interface class`, mantendo o domínio independente de interface, rede e persistência;
-- validação de receita e elegibilidade representando resultados esperados do negócio com `bool`, enquanto falhas técnicas permanecem representadas por exceções;
-- criação do checkout devolvendo o `remoteCheckoutId` e consulta posterior recuperando o mesmo checkout remoto sem repetir a operação de criação;
-- implementações falsas exercitando substituição pelos contratos e um consumidor didático recebendo as três dependências por construtor;
-- suíte completa do package validada com análise estática limpa e 24 testes aprovados;
-- `MedicationCounterState` criado como snapshot imutável da quantidade de medicamentos lidos;
-- `MedicationCounterCubit` assumindo a lógica do contador e emitindo um novo estado a cada leitura válida, sem depender de `setState`;
-- `BlocProvider` instalado na composição da rota do Modo Farmácia para fornecer o Cubit e controlar seu ciclo de vida;
-- ação de leitura acessando o Cubit com `context.read()`, sem assinar a página inteira às mudanças de estado;
-- `BlocConsumer` limitando as reconstruções à região de conteúdo e separando a apresentação dos efeitos pontuais da interface;
-- logs manuais confirmando os estados `0`, `1` e `2` no conteúdo sem reconstruir `PharmacyModePage` a cada emissão;
-- teste unitário do estado inicial e `blocTest` da primeira emissão do Cubit adicionados à suíte mobile;
-- dependências `flutter_bloc` e `bloc_test` registradas no aplicativo e resolvidas pelo lockfile compartilhado do workspace;
-- `CheckoutCubit` criado como camada de coordenação entre os contratos de repositório e a máquina de estados;
-- `CheckoutStateMachine` preservada como autoridade de todas as transições da sessão;
-- rejeições esperadas de receita e elegibilidade convertidas em falhas permanentes, enquanto falhas técnicas de criação e confirmação produzem falhas recuperáveis;
-- contexto de recuperação preservando `retryTargetStatus` e `remoteCheckoutId` para retomar a etapa correta sem recriar o pagamento remoto;
-- operações assíncronas protegidas por verificação de `isClosed` antes de novas emissões;
-- treze testes do `CheckoutCubit` cobrindo sucesso, leitura de medicamento, rejeições de negócio, falhas técnicas recuperáveis, retry e confirmação do mesmo checkout remoto;
-- `scanMedication` adicionando o medicamento à sessão por meio de `MedicationScanned` e da `CheckoutStateMachine`, sem alterar o status `collectingMedication`;
-- composição da rota migrada para um único `CheckoutCubit`, inicializado com a sessão local e implementações demonstrativas dos três contratos de repositório;
-- contador da interface derivado de `CheckoutSession.medications.length`, eliminando uma segunda fonte de verdade no fluxo em execução;
-- repositórios demonstrativos fornecendo respostas locais e determinísticas sem introduzir HTTP, banco de dados ou pagamento real;
-- teste de integração verificando que uma leitura válida atualiza a sessão consumida pela tela e apresenta `1 medicamento lido`;
-- `listenWhen` filtrando as emissões para executar a confirmação somente quando `CheckoutSession.medications.length` aumenta;
-- limpeza do EAN, remoção do foco e apresentação do `SnackBar` movidas do callback do formulário para o `listener`, depois que a nova sessão confirma a inclusão;
-- teste de integração comprovando que uma emissão direta do `CheckoutCubit` também apresenta a confirmação, sem depender do callback `_scanMedication`;
-- `CheckoutProgressData` definido como record imutável com somente a etapa atual e o rótulo necessários ao indicador;
-- `selectCheckoutProgress` extraído como função pura para converter o estado da sessão em progresso visual testável sem montar widgets;
-- `BlocSelector` limitando a reconstrução do indicador às mudanças do record selecionado, sem reagir a alterações irrelevantes da sessão;
-- validação e elegibilidade agrupadas na etapa 2, criação do pagamento na etapa 3 e confirmação pendente ou concluída na etapa 4;
-- falhas recuperáveis mantendo visualmente a etapa interrompida por meio de `retryTargetStatus`;
-- testes unitários cobrindo os mapeamentos do selector e teste de widget comprovando a apresentação da etapa selecionada;
-- um segundo `BlocSelector` observando somente `CheckoutStatus`, `statusMessage` e `remoteCheckoutId`, sem reconstruir o feedback por alterações irrelevantes da sessão;
-- mensagens de falha apresentadas como região semântica dinâmica com `Semantics(liveRegion: true)`, permitindo o anúncio automático por tecnologias assistivas;
-- ação `Tentar novamente` restrita a `recoverableFailure`, retomando o `retryTargetStatus` por meio de `CheckoutCubit.retry()` e limpando o contexto temporário da falha;
-- falhas permanentes apresentando a mensagem contextual sem oferecer uma ação de retry incompatível com o encerramento da sessão;
-- testes de widget cobrindo o anúncio acessível da falha recuperável, a retomada da etapa interrompida e a ausência do botão de retry em falhas permanentes;
-- ação `Validar compra` conectada a `CheckoutCubit.submitPrescription()`, disponível somente durante a coleta e depois da inclusão de ao menos um medicamento;
-- validação do formulário preservada como pré-condição da submissão, impedindo o avanço quando a referência da receita está vazia;
-- ações `Verificar elegibilidade`, `Criar pagamento` e `Confirmar pagamento` apresentadas apenas nos estados correspondentes e delegadas ao `CheckoutCubit`;
-- mesma instância de `DemoCheckoutRepository` preservando o checkout demonstrativo entre criação e consulta, vinculada pelo `remoteCheckoutId`;
-- testes de widget cobrindo a submissão da receita, a indisponibilidade da ação incompleta e o avanço visual pelas etapas de elegibilidade, criação e confirmação do pagamento;
-- estado `paid` apresentando `Pagamento confirmado` e o `remoteCheckoutId` concluído diretamente a partir do snapshot da sessão;
-- confirmação de sucesso exposta como região semântica dinâmica com `Semantics(liveRegion: true)` para anúncio por tecnologias assistivas;
-- ações de avanço removidas depois da conclusão, mantendo a interface coerente com o estado terminal;
-- teste de widget cobrindo o feedback de sucesso, o identificador remoto, a ausência da ação de confirmação e a semântica dinâmica;
-- `CheckoutSessionSnapshot` criado na camada `data` do aplicativo como representação serializável de `CheckoutSession`, sem acoplar o domínio a JSON ou persistência;
-- conversões `fromDomain` e `toDomain` preservando a sessão de domínio, enquanto `toMap` e `fromMap` delimitam a representação formada somente por valores compatíveis com JSON;
-- receita, medicamentos, saldo, status, `remoteCheckoutId`, `retryTargetStatus` e `statusMessage` preservados na serialização e na reconstrução da sessão;
-- nomes dos valores de `CheckoutStatus` gravados como `String` e reconstruídos com `byName`, tornando explícita a necessidade futura de versionamento ou migração caso o esquema seja alterado;
-- lista de medicamentos do snapshot protegida por cópia não modificável com `List.unmodifiable`;
-- três testes cobrindo serialização para mapa, reconstrução do domínio e round-trip completo `CheckoutSession → Map → JSON → Map → CheckoutSession`;
-- contrato `CheckoutSessionStorage` definido na camada `data` com operações assíncronas `save`, `load` e `clear`, sem levar detalhes de armazenamento para o domínio;
-- `InMemoryCheckoutSessionStorage` armazenando a representação de mapa e reconstruindo outro snapshot na leitura, enquanto armazenamento vazio ou limpo é representado por `null`;
-- três testes cobrindo armazenamento vazio, preservação dos dados entre `save` e `load` e remoção do snapshot por `clear`;
-- `CheckoutDatabase` criado com Drift, schema inicial versionado e uma tabela de registro único para preservar o snapshot mais recente como JSON;
-- escrita idempotente implementada com `id = 1` e `insertOnConflictUpdate`, substituindo o snapshot anterior sem acumular sessões obsoletas;
-- `DriftCheckoutSessionStorage` implementando o mesmo contrato assíncrono e convertendo o snapshot entre mapa, JSON e SQLite;
-- construtor injetável do banco preservado para SQLite em memória nos testes e `CheckoutDatabase.defaults()` configurado para abrir `mediflow_checkout.sqlite` no armazenamento do aplicativo;
-- seis testes cobrindo as operações do banco e o ciclo completo de `save`, `load` e `clear` pelo adapter Drift;
-- suíte mobile ampliada para 48 testes.
+### Domínio
 
-O aplicativo inicia em uma tela de benefícios com saldo fictício e navega para o “Modo Farmácia”, onde deriva o progresso do status atual do checkout, recebe uma receita e um EAN sintéticos, valida a entrada e adiciona cada leitura válida à `CheckoutSession`. `CheckoutCubit` é a fonte de verdade do fluxo em execução, coordena os contratos de repositório e delega as transições da sessão à `CheckoutStateMachine`; a interface deriva da própria sessão o contador, o progresso, o feedback contextual e a ação permitida em cada etapa. Depois da coleta, o usuário pode submeter a receita, verificar a elegibilidade, criar o checkout remoto demonstrativo e confirmar o pagamento, sempre por operações do Cubit e sem acessar diretamente a máquina de estados ou os repositórios. O `BlocConsumer` reconstrói o conteúdo e executa a confirmação somente depois que a sessão emitida registra outro medicamento, enquanto seletores distintos atualizam o progresso e o feedback apenas quando seus respectivos valores mudam. Falhas recuperáveis preservam e retomam a etapa interrompida, enquanto falhas permanentes encerram a sessão sem oferecer retry; em ambos os casos, a mensagem permanece no snapshot e é apresentada como uma região semântica dinâmica. Quando a sessão chega a `paid`, a tela apresenta uma confirmação acessível com o identificador do checkout concluído e remove as ações de avanço desse estado terminal. A camada `data` consegue transformar a sessão completa em uma representação compatível com JSON, armazená-la em memória ou em SQLite por implementações substituíveis de `CheckoutSessionStorage` e reconstruir outro snapshot sem levar detalhes de serialização ou armazenamento para o package Dart puro. O adapter Drift e a abertura do arquivo persistente estão prontos e testados isoladamente; a composição do fluxo principal ainda não salva nem restaura automaticamente a sessão. O checkout permanece exclusivamente educacional e não contém elegibilidade real, pagamentos ou integrações externas.
+`packages/checkout_domain` é Dart puro, sem Flutter, Firebase, Dio ou Drift — e um teste de fronteira impede que isso mude. Dentro dele, uma máquina de estados transforma uma sessão e um evento num novo snapshot imutável; transições inválidas são rejeitadas por exceção em vez de produzirem estado inconsistente. Os estados terminais são classificados por `switch` exaustivo, então acrescentar um status novo quebra a compilação em vez de cair num caso silencioso.
+
+### Backend
+
+`functions/` é um backend próprio em Cloud Functions, publicado, que grava `userId` em cada checkout e verifica propriedade na leitura. Um checkout de outra pessoa responde **404, não 403** — quem não é dono não descobre sequer que o recurso existe. A criação é idempotente pela `Idempotency-Key`: a mesma chave encontra o documento existente e devolve o mesmo `id` em vez de cobrar de novo.
+
+### Offline-first, com o escopo declarado
+
+O aplicativo lê do SQLite local e escreve por um outbox: a intenção de compra é gravada antes de sair para a rede, e um sincronizador a reenvia. Três gatilhos alimentam o reenvio — inicialização, volta da conectividade e retomada do aplicativo —, e um indicador reativo mostra ao usuário que há algo pendente.
+
+O que isso **não** é está escrito por extenso na [ADR 0001](docs/adr/0001-offline-first-scope-and-limits.md), junto com as premissas que caíram ao longo do caminho: o sistema é local-first na leitura e misto na escrita, não há versionamento nem resolução de conflitos, e a garantia do outbox tem limites conhecidos.
+
+### Multi-usuário
+
+Autenticação por e-mail e senha, com as mensagens do Firebase traduzidas por uma tabela própria — conta inexistente e senha errada produzem a mesma resposta, que é a proteção contra enumeração espelhando o 404 do backend.
+
+O banco local é escopado por usuário desde a migração Drift v2 → v3: sessão e outbox carregam `userId`, e todas as consultas filtram por dono. Sair **preserva** a fila de quem saiu, e o sincronizador recusa drenar sem sessão — as duas decisões estão registradas, porque a alternativa de cada uma perde compra registrada offline ou envia evento de um usuário com o token de outro.
+
+### Apresentação
+
+O Cubit é o ViewModel e emite um estado de visão próprio, não o tipo de domínio: a tela recebe `canConfirmPayment`, não `status`, e não importa `checkout_domain`. O feedback é uma hierarquia `sealed` renderizada por `switch` exaustivo. A fronteira e o que ela não alcançou estão na [ADR 0002](docs/adr/0002-presentation-layer-boundary.md).
+
+### Design system
+
+Material 3 derivado de uma semente, nos temas claro e escuro — o escuro não inverte cores, rederiva cada papel a partir da mesma semente. Os botões têm hierarquia, e quem decide qual ação é a primária é o estado de visão, não a tela. O Android tem rótulo e ícone adaptativo próprios.
+
+### Observabilidade
+
+Rastros de performance, eventos de analytics e relatório de falhas passam por interfaces do próprio aplicativo, com o Firebase atrás delas. É essa costura que permite montar o grafo de dependências inteiro num teste, sem dispositivo.
+
+### Verificação
+
+| Pacote | Testes |
+| --- | --- |
+| `apps/mobile` | 224 |
+| `packages/checkout_domain` | 26 |
+| `functions` | 15 |
+
+Três deles são goldens, e há um teste de acessibilidade que percorre duas telas nos dois temas. Um teste de integração contra o emulador de Authentication roda à mão, fora da CI.
+
+O método recorrente do projeto é a **quebra dirigida**: antes de confiar num teste, sabotar de propósito o código que ele deveria proteger e confirmar que ele fica vermelho — e que fica vermelho *pelo motivo do seu próprio nome*. Vários testes deste repositório mudaram de forma depois de sobreviverem a uma sabotagem que deveriam ter pegado.
+
+### O que ainda não existe
+
+- `apps/ops_web`, o painel operacional, existe como diretório e README. Não foi construído.
+- Não há responsividade por breakpoint nem cobertura de fonte ampliada.
+- O ícone legado (Android 7 e anterior) continua sendo o padrão do Flutter; as APIs 24 e 25 caem nele.
 
 ## Limites do projeto
 
@@ -235,9 +161,9 @@ git diff --check
 git status --short
 ```
 
-O resultado esperado é formatação e análise limpas, **124 testes** em `apps/mobile`, **26** em `packages/checkout_domain`, **15** em `functions`, e somente alterações intencionais exibidas pelo Git.
+O resultado esperado é formatação e análise limpas, **224 testes** em `apps/mobile`, **26** em `packages/checkout_domain`, **15** em `functions`, e somente alterações intencionais exibidas pelo Git.
 
-Dois desses testes são goldens, que comparam a renderização da tela inicial com imagens versionadas. Eles toleram até 3% de diferença de pixels, porque a renderização do macOS e a do Linux da CI divergem em cerca de 1,5% — o `apps/mobile/README.md` registra os números medidos e o que essa troca custa.
+Três desses testes são goldens, que comparam a renderização de uma tela com imagens versionadas — duas da tela de benefícios e uma da tela de entrada no tema escuro. Eles toleram até 3% de diferença de pixels, porque a renderização do macOS e a do Linux da CI divergem em cerca de 1,5%. Essa tolerância tem um preço medido: ela pega mudança de cor em área grande e movimento de bloco, e **não** pega borda de 1px nem texto fino. O `apps/mobile/README.md` registra os números e o que a troca custa.
 
 Os READMEs de cada projeto detalham o que cada suíte cobre.
 
