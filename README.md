@@ -1,5 +1,5 @@
-<p align="center">
-  <img src="docs/assets/logo.svg" alt="" width="104" height="104">
+<p align="left">
+  <img src="docs/assets/logo.svg" alt="" width="80" height="80">
 </p>
 
 # MediFlow Learning
@@ -81,6 +81,8 @@ O Cubit é o ViewModel e emite um estado de visão próprio, não o tipo de dom�
 ### Design system
 
 Material 3 derivado de uma semente, nos temas claro e escuro — o escuro não inverte cores, rederiva cada papel a partir da mesma semente. Os botões têm hierarquia, e quem decide qual ação é a primária é o estado de visão, não a tela. O Android tem rótulo e ícone adaptativo próprios.
+
+A [ADR 0003](docs/adr/0003-design-system-and-visual-verification.md) registra as decisões e, principalmente, o alcance medido de cada instrumento de verificação visual — o que um golden pega, o que uma diretriz de contraste pega, e o que nenhum dos dois pega.
 
 ### Observabilidade
 

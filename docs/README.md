@@ -10,3 +10,4 @@ Todo exemplo documentado deve ser reproduzível com dados sintéticos e sem depe
 
 - [0001 — Escopo e limites do offline-first no checkout](adr/0001-offline-first-scope-and-limits.md)
 - [0002 — A fronteira da camada de apresentação](adr/0002-presentation-layer-boundary.md)
+- [0003 — O design system e o alcance de cada instrumento de verificação](adr/0003-design-system-and-visual-verification.md)
