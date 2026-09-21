@@ -55,6 +55,14 @@ final class PermanentFailure extends CheckoutFeedback {
   int get hashCode => Object.hash(PermanentFailure, message);
 }
 
+/// As ações que avançam o fluxo na pilha do contador.
+///
+/// "Tentar novamente" deliberadamente não está aqui: ela é decidida pela
+/// variante de `CheckoutFeedback`, não pelo status, e é renderizada no bloco de
+/// feedback — não nesta pilha. Um valor a mais aqui faria a View procurar por
+/// ela onde ela não mora.
+enum CheckoutAction { scan, submit, checkEligibility, createPayment, confirmPayment }
+
 /// Tudo o que a tela do Modo Farmácia precisa saber, já decidido.
 ///
 /// A View não recebe `CheckoutSession` e não importa o pacote de domínio: ela
@@ -77,6 +85,7 @@ final class CheckoutViewState {
   final bool canConfirmPayment;
   final CheckoutFeedback feedback;
   final bool isBusy;
+  final CheckoutAction? primaryAction;
 
   const CheckoutViewState({
     required this.currentStep,
@@ -91,6 +100,7 @@ final class CheckoutViewState {
     required this.canConfirmPayment,
     required this.feedback,
     this.isBusy = false,
+    this.primaryAction,
   });
 
   /// O único ponto do arquivo que conhece o domínio.
@@ -102,24 +112,72 @@ final class CheckoutViewState {
     final progress = selectCheckoutProgress(session);
     final medicationCount = session.medications.length;
 
+    final isCollecting = session.status == CheckoutStatus.collectingMedication;
+    final hasMedication = medicationCount > 0;
+
+    // `MedicationScanned` só tem transição a partir de `collectingMedication`;
+    // habilitar a leitura fora dela levaria a
+    // `InvalidCheckoutTransitionException`.
+    final canScan = isCollecting;
+    final canSubmit = isCollecting && hasMedication;
+    final canCheckEligibility =
+        session.status == CheckoutStatus.checkingEligibility && hasMedication;
+    final canCreatePayment = session.status == CheckoutStatus.creatingPayment;
+    final canConfirmPayment =
+        session.status == CheckoutStatus.awaitingConfirmation && session.remoteCheckoutId != null;
+
     return CheckoutViewState(
       currentStep: progress.currentStep,
       totalSteps: 4,
       stepLabel: progress.label,
       medicationLabel: _medicationLabelFor(medicationCount),
       medicationCount: medicationCount,
-      // `MedicationScanned` só tem transição a partir de
-      // `collectingMedication`; habilitar a leitura fora dela levaria a
-      // `InvalidCheckoutTransitionException`.
-      canScan: session.status == CheckoutStatus.collectingMedication,
-      canSubmit: session.status == CheckoutStatus.collectingMedication && medicationCount > 0,
-      canCheckEligibility:
-          session.status == CheckoutStatus.checkingEligibility && medicationCount > 0,
-      canCreatePayment: session.status == CheckoutStatus.creatingPayment,
-      canConfirmPayment:
-          session.status == CheckoutStatus.awaitingConfirmation && session.remoteCheckoutId != null,
+      canScan: canScan,
+      canSubmit: canSubmit,
+      canCheckEligibility: canCheckEligibility,
+      canCreatePayment: canCreatePayment,
+      canConfirmPayment: canConfirmPayment,
       feedback: _feedbackFor(session),
+      primaryAction: _primaryActionFor(
+        canScan: canScan,
+        canSubmit: canSubmit,
+        canCheckEligibility: canCheckEligibility,
+        canCreatePayment: canCreatePayment,
+        canConfirmPayment: canConfirmPayment,
+      ),
     );
+  }
+
+  /// Qual das ações disponíveis merece a ênfase primária na tela.
+  ///
+  /// Do passo mais profundo para o mais raso, e derivado só dos `can*` — não do
+  /// status. Isso mantém a decisão deste lado da fronteira: nenhum
+  /// conhecimento novo de domínio entra aqui.
+  ///
+  /// Os `CheckoutStatus` são mutuamente exclusivos, então o único par que pode
+  /// ser verdadeiro ao mesmo tempo é `canScan` + `canSubmit`, em
+  /// `collectingMedication` com pelo menos um medicamento — e a resposta ali é
+  /// "Validar compra", porque é ela que avança. A cadeia tem cinco ramos para
+  /// continuar correta se um status novo aparecer, mas hoje ela desempata um
+  /// caso só.
+  ///
+  /// `null` é resultado legítimo e frequente: durante uma requisição em voo
+  /// nada avança, e em falha a ação é "Tentar novamente", que não pertence a
+  /// esta pilha.
+  static CheckoutAction? _primaryActionFor({
+    required bool canScan,
+    required bool canSubmit,
+    required bool canCheckEligibility,
+    required bool canCreatePayment,
+    required bool canConfirmPayment,
+  }) {
+    if (canConfirmPayment) return CheckoutAction.confirmPayment;
+    if (canCreatePayment) return CheckoutAction.createPayment;
+    if (canCheckEligibility) return CheckoutAction.checkEligibility;
+    if (canSubmit) return CheckoutAction.submit;
+    if (canScan) return CheckoutAction.scan;
+
+    return null;
   }
 
   static String _medicationLabelFor(int count) {
@@ -164,7 +222,8 @@ final class CheckoutViewState {
         other.canCreatePayment == canCreatePayment &&
         other.canConfirmPayment == canConfirmPayment &&
         other.feedback == feedback &&
-        other.isBusy == isBusy;
+        other.isBusy == isBusy &&
+        other.primaryAction == primaryAction;
   }
 
   // Lê exatamente a mesma lista de campos do `==`. Se as duas listas
@@ -183,5 +242,6 @@ final class CheckoutViewState {
     canConfirmPayment,
     feedback,
     isBusy,
+    primaryAction,
   );
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    O mesmo recurso para o modo escuro do sistema.
+
+    Sem ele, `values-night/styles.xml` aplicava `Theme.Black.NoTitleBar` mas o
+    `windowBackground` continuava apontando para a versão clara: um flash
+    branco de tela cheia antes da primeira frame.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background_dark" />
+</layer-list>

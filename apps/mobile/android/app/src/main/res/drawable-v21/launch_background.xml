@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
+<!--
+    Esta é a variante que de fato vale: com `minSdk = 24`, o qualificador `v21`
+    sempre vence a pasta `drawable/` sem qualificador.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    Antes daqui havia `?android:colorBackground`, que resolve contra o tema
+    aplicado — e já dava preto no modo escuro, porque `values-night/styles.xml`
+    usa `Theme.Black.NoTitleBar`. A troca por uma cor explícita não corrige um
+    defeito: ela faz o splash usar a mesma superfície que o aplicativo, em vez
+    do branco e preto genéricos do sistema.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>

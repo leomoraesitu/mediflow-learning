@@ -122,17 +122,20 @@ class _RegisterPageState extends State<RegisterPage> {
                 BlocSelector<AuthCubit, AuthViewState, bool>(
                   selector: (state) => state.isBusy,
                   builder: (context, isBusy) {
-                    return ElevatedButton(
+                    return FilledButton(
                       onPressed: isBusy ? null : _submit,
                       // O indicador substitui o texto dentro do botão, e não o
                       // botão: trocar o widget inteiro encolheria o alvo de
                       // toque abaixo do mínimo que o teste de acessibilidade
                       // verifica.
                       child: isBusy
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.onPrimary,
+                              ),
                             )
                           : const Text('Criar conta'),
                     );

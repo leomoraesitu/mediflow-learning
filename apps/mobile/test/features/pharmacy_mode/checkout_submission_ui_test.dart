@@ -73,8 +73,8 @@ void main() {
 
     expect(find.text('Validar compra'), findsOneWidget);
 
-    final button = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Validar compra'),
+    final button = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Validar compra'),
     );
 
     expect(button.onPressed, isNull);

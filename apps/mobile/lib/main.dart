@@ -4,6 +4,7 @@ import 'package:checkout_domain/checkout_domain.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
@@ -22,11 +23,10 @@ import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.da
 import 'package:mediflow_mobile/features/pharmacy_mode/data/remote/checkout_api_client.dart';
 import 'package:mediflow_mobile/firebase_options.dart';
 import 'package:mediflow_mobile/lifecycle/lifecycle_sync_triggers.dart';
-import 'package:mediflow_mobile/observability/firebase_performance_tracer.dart';
-import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:mediflow_mobile/observability/firebase_analytics_sink.dart';
 import 'package:mediflow_mobile/observability/firebase_crash_reporter.dart';
+import 'package:mediflow_mobile/observability/firebase_performance_tracer.dart';
+import 'package:mediflow_mobile/observers/checkout_analytics_observer.dart';
 
 const checkoutApiBaseUrl = String.fromEnvironment('CHECKOUT_API_BASE_URL');
 
@@ -157,6 +157,8 @@ class MainApp extends StatelessWidget {
         ),
       ),
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
     );
   }
 }

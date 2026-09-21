@@ -539,6 +539,51 @@ O segundo teste é o que distingue um esboço da coisa real: enfileira um evento
 
 O composition root é código como qualquer outro, e a parte dele que copia valores é a mais fácil de errar e a mais difícil de ver. Duas peças ficaram fora do alcance da suíte pela mesma razão: **não eram alcançáveis a partir de um teste** — o observador por ser um objeto global, a fiação por viver dentro de `main()`.
 
+### A identidade do aplicativo (Aula 59)
+
+O que um entrevistador vê antes de abrir o aplicativo eram o nome do diretório do pacote e o pássaro padrão do Flutter. `android:label` passou a ser `MediFlow`, e o ícone virou um ícone adaptativo.
+
+#### Duas camadas, e a zona segura
+
+`res/mipmap-anydpi-v26/ic_launcher.xml` amarra um fundo (`@color/ic_launcher_background`, a mesma semente de `AppTheme.seedColor`) e uma frente (`res/drawable/ic_launcher_foreground.xml`, um `<vector>`). O qualificador `anydpi-v26` faz o Android 8 e posteriores preferirem este arquivo; `android:icon` no manifesto não mudou, porque `@mipmap/ic_launcher` agora resolve para dois recursos conforme a versão.
+
+As camadas são separadas porque **quem decide o formato é o launcher, não o aplicativo** — círculo, quadrado arredondado, trevo — e ele precisa poder mover as duas de forma independente para animar paralaxe e sombra. O canvas é de 108×108dp, mas só os 72×72dp centrais são garantidamente visíveis: os 18dp de cada borda são zona de recorte. Um ícone desenhado até a borda perde as pontas em qualquer máscara.
+
+A semente aparecendo em dois lugares — `#3559C7` em `colors.xml` e `AppTheme.seedColor` em Dart — é o único acoplamento por valor que sobrou no projeto. Nada no build liga os dois, e não há teste que os compare.
+
+#### O splash, e um defeito que eu diagnostiquei errado
+
+A primeira leitura foi: `drawable/launch_background.xml` é branco, `values-night/styles.xml` aplica `Theme.Black.NoTitleBar`, logo o modo escuro produz um flash branco antes da primeira frame.
+
+**Estava errado, e a precedência de qualificadores de recurso é o motivo.** Existe também `drawable-v21/launch_background.xml`, e com `minSdk = 24` ele sempre vence a pasta sem qualificador. O conteúdo dele era `?android:colorBackground` — um atributo de tema, que resolve contra o tema aplicado e já dava preto no modo escuro. A pasta `drawable/` era código morto. Não havia flash branco.
+
+O que ficou no lugar não é correção de defeito, é melhoria: as três variantes passaram a apontar para cores nomeadas em `values/colors.xml`, iguais a `ColorScheme.surface` de cada tema — `#FAF8FF` e `#121318`. O splash usa a mesma superfície do aplicativo em vez do branco e preto genéricos do sistema.
+
+A ordem de precedência que importa aqui: o qualificador de **modo noturno** vem antes do de **versão de plataforma**, então `drawable-night/` vence `drawable-v21/` no escuro, e `drawable-v21/` vence `drawable/` no claro.
+
+E um defeito de verdade apareceu no caminho, que só o Gradle viu: a primeira versão de `drawable-night/launch_background.xml` foi escrita como um `<item>` solto, sem o `<layer-list>` raiz e sem o `xmlns`. `flutter analyze` e `flutter test` ficaram verdes; `assembleDebug` falhou com `ParseError at [1,59]`. Recurso Android está inteiramente fora do alcance do ferramental Dart — **a única validação que existe para eles é compilar o aplicativo**.
+
+#### A dívida: os PNGs legados
+
+Os cinco `mipmap-*/ic_launcher.png` (48 a 192px) **continuam sendo o pássaro do Flutter**. Com `minSdk = 24`, as APIs 24 e 25 não conhecem ícone adaptativo e caem neles.
+
+A decisão é deixar assim, e o motivo é o custo: refazê-los exige produzir um PNG de origem num editor externo e trazer cinco binários para o repositório — ou subir o `minSdk` para 26, que é decisão de produto e não deve ser tomada por conveniência de ícone. Duas versões de Android com fatia desprezível não pagam nenhuma das duas.
+
+O que torna isso dívida registrada em vez de descuido é estar escrito aqui. Quem rodar `ls res/mipmap-hdpi` e encontrar o pássaro vai saber que foi escolha.
+
+#### O que nenhum teste vê
+
+`test/android_identity_test.dart` lê o `AndroidManifest.xml` como texto e afirma que o rótulo é o nome do produto, não o do diretório — na mesma família de `package_boundary_test.dart`. É a única parte deste passo que a suíte alcança.
+
+O resto só se verifica no aparelho, e foi verificado antes do commit. O que a passagem pelo emulador confirmou, e nenhum teste enxerga:
+
+- o rótulo e o ícone na gaveta de aplicativos — círculo na cor da semente, disco branco, cruz vazada;
+- os dois temas respondendo ao `cmd uimode night` **sem reiniciar o processo**, o que exercita `ThemeMode.system` de verdade;
+- a resolução por estado das bordas de campo no tema escuro: neutra em repouso, `primary` com 2px no foco, e `error` no campo inválido. É a lacuna de cobertura descrita em `accessibility_guidelines_test.dart` — nem golden nem diretriz de contraste alcançam borda, que não é texto;
+- a hierarquia de botões migrando: com zero medicamentos, "Simular leitura" é o preenchido e "Validar compra" o contornado; depois de uma leitura os dois trocam. É o único desempate real de `_primaryActionFor`, e este foi o teste dele ponta a ponta.
+
+Uma expectativa caiu no caminho: o golden regravado sugeria que a elevação 3 do cartão desenhava uma borda escura dura. No aparelho a sombra é sutil e o cartão lê como superfície elevada. O contorno marcado era artefato do renderizador de teste, não do aplicativo.
+
 ## Execução
 
 O aplicativo exige a URL do backend em tempo de compilação e falha imediatamente se ela não for informada. Suba os emuladores do Firebase em um terminal:

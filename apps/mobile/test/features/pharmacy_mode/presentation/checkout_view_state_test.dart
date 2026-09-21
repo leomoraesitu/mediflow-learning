@@ -105,6 +105,38 @@ void main() {
       expect(viewState.canConfirmPayment, isFalse);
     });
   });
+  group('primary action', () {
+    test('elects the deepest available step as the primary action', () {
+      final session = _session(
+        status: CheckoutStatus.awaitingConfirmation,
+        remoteCheckoutId: 'remote-001',
+      );
+      final viewState = CheckoutViewState.fromSession(session);
+
+      expect(viewState.primaryAction, CheckoutAction.confirmPayment);
+    });
+
+    test('has no primary action while a step is in flight', () {
+      // `validatingPrescription` é o status com requisição em voo: nenhum dos
+      // cinco `can*` é verdadeiro, então a cadeia chega ao `return null`. É o
+      // único ramo que os outros testes deste grupo não alcançam.
+      final session = _session(status: CheckoutStatus.validatingPrescription, medicationCount: 1);
+      final viewState = CheckoutViewState.fromSession(session);
+
+      expect(viewState.primaryAction, isNull);
+    });
+
+    test('prefers submitting over scanning once a medication was scanned', () {
+      final session = _session(status: CheckoutStatus.collectingMedication, medicationCount: 1);
+      final viewState = CheckoutViewState.fromSession(session);
+
+      // A pré-condição é o teste: este é o único par de ações que pode estar
+      // disponível ao mesmo tempo, e portanto o único desempate real da cadeia.
+      expect(viewState.canScan && viewState.canSubmit, isTrue);
+
+      expect(viewState.primaryAction, CheckoutAction.submit);
+    });
+  });
   group('feedback', () {
     test('reports success with the remote checkout id when the checkout is paid', () {
       final session = _session(status: CheckoutStatus.paid, remoteCheckoutId: 'remote-001');
