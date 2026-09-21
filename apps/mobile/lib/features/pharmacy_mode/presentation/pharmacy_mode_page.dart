@@ -103,7 +103,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                     children: [
                       Semantics(liveRegion: true, child: Text(message)),
                       const SizedBox(height: AppSpacing.sm),
-                      ElevatedButton(
+                      FilledButton(
                         onPressed: () => context.read<CheckoutCubit>().retry(),
                         child: const Text('Tentar novamente'),
                       ),
@@ -132,6 +132,7 @@ class _PharmacyModePageState extends State<PharmacyModePage> {
                   return MedicationCounterContent(
                     medicationLabel: state.medicationLabel,
                     medicationCount: state.medicationCount,
+                    primaryAction: state.primaryAction,
                     onScan: state.canScan ? _scanMedication : null,
                     prescriptionController: _prescriptionController,
                     eanController: _eanController,

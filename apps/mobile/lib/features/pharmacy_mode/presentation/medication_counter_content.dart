@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mediflow_mobile/design_system/app_spacing.dart';
 import 'package:mediflow_mobile/design_system/widgets/mediflow_content_card.dart';
+import 'package:mediflow_mobile/features/pharmacy_mode/presentation/checkout_view_state.dart';
 
 class MedicationCounterContent extends StatelessWidget {
   const MedicationCounterContent({
     required this.medicationLabel,
     required this.medicationCount,
+    this.primaryAction,
     required this.onScan,
     required this.prescriptionController,
     required this.eanController,
@@ -22,6 +24,7 @@ class MedicationCounterContent extends StatelessWidget {
 
   final String medicationLabel;
   final int medicationCount;
+  final CheckoutAction? primaryAction;
   final VoidCallback? onScan;
   final TextEditingController prescriptionController;
   final TextEditingController eanController;
@@ -114,27 +117,52 @@ class MedicationCounterContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ElevatedButton(onPressed: onScan, child: const Text('Simular leitura')),
+            _actionButton(action: CheckoutAction.scan, onPressed: onScan, label: 'Simular leitura'),
             const SizedBox(height: AppSpacing.sm),
-            ElevatedButton(onPressed: onSubmit, child: const Text('Validar compra')),
+            _actionButton(
+              action: CheckoutAction.submit,
+              onPressed: onSubmit,
+              label: 'Validar compra',
+            ),
             if (onCheckEligibility != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              ElevatedButton(
+              _actionButton(
+                action: CheckoutAction.checkEligibility,
                 onPressed: onCheckEligibility,
-                child: const Text('Verificar elegibilidade'),
+                label: 'Verificar elegibilidade',
               ),
             ],
             if (onCreateCheckout != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              ElevatedButton(onPressed: onCreateCheckout, child: const Text('Criar pagamento')),
+              _actionButton(
+                action: CheckoutAction.createPayment,
+                onPressed: onCreateCheckout,
+                label: 'Criar pagamento',
+              ),
             ],
             if (onConfirmPayment != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              ElevatedButton(onPressed: onConfirmPayment, child: const Text('Confirmar pagamento')),
+              _actionButton(
+                action: CheckoutAction.confirmPayment,
+                onPressed: onConfirmPayment,
+                label: 'Confirmar pagamento',
+              ),
             ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _actionButton({
+    required CheckoutAction action,
+    required VoidCallback? onPressed,
+    required String label,
+  }) {
+    final child = Text(label);
+
+    return action == primaryAction
+        ? FilledButton(onPressed: onPressed, child: child)
+        : OutlinedButton(onPressed: onPressed, child: child);
   }
 }

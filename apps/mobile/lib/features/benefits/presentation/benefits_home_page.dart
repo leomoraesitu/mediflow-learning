@@ -155,7 +155,7 @@ class _BenefitsHomePageState extends State<BenefitsHomePage> {
                           Text(widget.settings.maintenanceMessage, textAlign: TextAlign.center),
                         const SizedBox(height: AppSpacing.md),
 
-                        ElevatedButton(
+                        FilledButton(
                           onPressed: widget.settings.maintenanceMode
                               ? null
                               : () {

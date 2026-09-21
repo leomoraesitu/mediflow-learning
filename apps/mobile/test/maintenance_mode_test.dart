@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mediflow_mobile/config/auth_user.dart';
 import 'package:mediflow_mobile/config/operational_settings.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/checkout_database.dart';
 import 'package:mediflow_mobile/features/pharmacy_mode/data/demo_checkout_repositories.dart';
@@ -10,8 +11,6 @@ import 'package:mediflow_mobile/features/pharmacy_mode/presentation/pharmacy_mod
 import 'package:mediflow_mobile/main.dart';
 
 import 'config/fake_auth_gateway.dart';
-
-import 'package:mediflow_mobile/config/auth_user.dart';
 
 void main() {
   testWidgets('maintenanceMode true deve exibir mensagem e impedir acesso ao Modo Farmácia', (
@@ -50,8 +49,8 @@ void main() {
     await tester.tap(openPharmacyModeButton);
     await tester.pumpAndSettle();
 
-    final button = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Iniciar Modo Farmácia'),
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Iniciar Modo Farmácia'),
     );
     expect(button.enabled, isFalse);
 
@@ -85,8 +84,8 @@ void main() {
       expect(find.text('MediFlow'), findsOneWidget);
       expect(pharmacyModePage, findsNothing);
       expect(openPharmacyModeButton, findsOneWidget);
-      final button = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Iniciar Modo Farmácia'),
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Iniciar Modo Farmácia'),
       );
       expect(button.enabled, isTrue);
 

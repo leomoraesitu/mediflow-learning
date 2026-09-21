@@ -48,7 +48,7 @@ void main() {
   testWidgets('shows a validation message when the email is empty', (tester) async {
     await pumpSignIn(tester);
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Entrar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await tester.pump();
 
     expect(find.text('Informe o e-mail.'), findsOneWidget);
@@ -67,11 +67,11 @@ void main() {
     // Localizado por tipo, e não por texto: enquanto ocupado o rótulo
     // 'Entrar' é substituído pelo indicador — um `widgetWithText` deixaria de
     // encontrar o botão exatamente na condição que este teste verifica.
-    final submitButton = find.byType(ElevatedButton);
+    final submitButton = find.byType(FilledButton);
     await tester.tap(submitButton);
     await tester.pump();
 
-    expect(tester.widget<ElevatedButton>(submitButton).enabled, isFalse);
+    expect(tester.widget<FilledButton>(submitButton).enabled, isFalse);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     // `pump`, e não `pumpAndSettle`: o sucesso não emite, então `isBusy`
@@ -88,11 +88,35 @@ void main() {
     await pumpSignIn(tester);
     await fillValidCredentials(tester);
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Entrar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await tester.pumpAndSettle();
 
     // A mensagem que a tabela do Cubit realmente produz, e a mesma para
     // conta inexistente e senha errada — é a proteção contra enumeração.
     expect(find.text('E-mail ou senha incorretos.'), findsOneWidget);
+  });
+
+  testWidgets('draws the busy indicator in a color that contrasts with the filled button', (
+    tester,
+  ) async {
+    fakeAuthGateway.holdEmailOperations();
+
+    await pumpSignIn(tester);
+    await fillValidCredentials(tester);
+
+    final submitButton = find.byType(FilledButton);
+    await tester.tap(submitButton);
+    await tester.pump();
+
+    final circularProgressIndicator = find.byType(CircularProgressIndicator);
+    expect(circularProgressIndicator, findsOneWidget);
+    final indicatorWidget = tester.widget<CircularProgressIndicator>(circularProgressIndicator);
+    expect(
+      indicatorWidget.color,
+      equals(Theme.of(tester.element(submitButton)).colorScheme.onPrimary),
+    );
+
+    fakeAuthGateway.releaseEmailOperations();
+    await tester.pump();
   });
 }

@@ -60,7 +60,7 @@ void main() {
     await pumpRegister(tester);
     await fillValidCredentials(tester);
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Criar conta'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar conta'));
 
     await tester.pumpAndSettle();
 
@@ -73,7 +73,7 @@ void main() {
     await pumpRegister(tester);
     await fillValidCredentials(tester);
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Criar conta'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar conta'));
 
     await tester.pumpAndSettle();
 

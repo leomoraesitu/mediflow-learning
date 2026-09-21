@@ -20,6 +20,14 @@ final class AppTheme {
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
+      // Nenhuma tela usa `ElevatedButton` desde que os botões ganharam
+      // hierarquia: o primário é `FilledButton` e o secundário é
+      // `OutlinedButton`. O tema fica assim mesmo, e a decisão é deliberada —
+      // ele não é um no-op como o `TextTheme` que saiu daqui, e sim um piso de
+      // alvo de toque que o Flutter não dá de graça, para um tipo que o
+      // framework continua oferecendo. Remover valeria o preço de o teste
+      // `applies the minimum touch target to every button type` passar a
+      // afirmar só sobre os tipos em uso hoje.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(minimumSize: minimumButtonSize),
       ),
