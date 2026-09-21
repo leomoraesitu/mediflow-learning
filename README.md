@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="" width="104" height="104">
+</p>
+
 # MediFlow Learning
 
 Repositório público do MediFlow Learning, um projeto educacional independente sobre um checkout de medicamentos resiliente. O desenvolvimento acontece de forma incremental, aula por aula, para exercitar Dart, Flutter, testes, arquitetura, resiliência e observabilidade e permitir o acompanhamento público dessa evolução.
