@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    As cores dos recursos Android. Elas duplicam valores que o Dart deriva de
+    `AppTheme.seedColor`, e a duplicação é inevitável: o splash e o ícone são
+    desenhados pelo sistema antes de o motor do Flutter existir, então nada
+    pode consultar o `ColorScheme` em tempo de execução.
+
+    Nada no build liga os dois lados. Mudar a semente em `app_theme.dart` exige
+    voltar aqui à mão.
+-->
+<resources>
+    <!-- `AppTheme.seedColor`. -->
+    <color name="ic_launcher_background">#3559C7</color>
+
+    <!-- `ColorScheme.fromSeed(seedColor, brightness: light).surface`. -->
+    <color name="launch_background">#FAF8FF</color>
+
+    <!-- `ColorScheme.fromSeed(seedColor, brightness: dark).surface`. -->
+    <color name="launch_background_dark">#121318</color>
+</resources>

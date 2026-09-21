@@ -15,7 +15,11 @@ void main() {
     expect(AppTheme.light.colorScheme.primary, isNot(AppTheme.dark.colorScheme.primary));
   });
 
-  test('applies the minimum touch target to every button type', () {
+  // `minimumSize`, e o nome diz isso: o alvo de toque de 48 é garantido pelo
+  // framework via `MaterialTapTargetSize.padded`, independentemente deste
+  // valor. O que o tema fixa é o tamanho visual, e é só isso que se afirma
+  // aqui.
+  test('applies the same minimum visual size to every button type', () {
     const expected = Size(AppSizes.minimumButtonSize, AppSizes.minimumButtonSize);
 
     final styles = <ButtonStyle?>[
