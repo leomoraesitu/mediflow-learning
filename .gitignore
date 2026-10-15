@@ -10,6 +10,9 @@ coverage/
 .vscode/*
 # settings.json é contrato de formatação do projeto, não preferência pessoal.
 !.vscode/settings.json
+# launch.json carrega os --dart-define obrigatórios para rodar o app; só tem
+# URLs públicas, nenhum segredo.
+!.vscode/launch.json
 *.iml
 .DS_Store
 

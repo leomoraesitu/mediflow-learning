@@ -1,0 +1,63 @@
+{
+    // O app exige CHECKOUT_API_BASE_URL em tempo de compilação: sem ele,
+    // main() lança StateError antes de qualquer inicialização. Por isso toda
+    // configuração de apps/mobile informa a URL via --dart-define.
+    //
+    // Ao alternar entre emuladores e produção, limpe os dados do app
+    // (adb shell pm clear com.leomoraesitu.mediflow_mobile): a credencial do
+    // Firebase Auth em cache não vale no outro ambiente. Ver ADR 0001.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Requer `firebase emulators:start --only auth,functions,firestore`
+            // rodando. 10.0.2.2 é o host visto do emulador Android; em
+            // dispositivo físico, troque pelo IP da máquina.
+            "name": "mobile (emuladores Firebase)",
+            "cwd": "apps/mobile",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define=CHECKOUT_API_BASE_URL=http://10.0.2.2:5001/mediflow-learning/us-central1/api",
+                "--dart-define=USE_FIREBASE_EMULATORS=true"
+            ]
+        },
+        {
+            "name": "mobile (produção)",
+            "cwd": "apps/mobile",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define=CHECKOUT_API_BASE_URL=https://us-central1-mediflow-learning.cloudfunctions.net/api"
+            ]
+        },
+        {
+            // Profile e release usam só o backend publicado: o
+            // usesCleartextTraffic que libera http para o emulador existe
+            // apenas no manifesto de debug.
+            "name": "mobile (produção, profile mode)",
+            "cwd": "apps/mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "toolArgs": [
+                "--dart-define=CHECKOUT_API_BASE_URL=https://us-central1-mediflow-learning.cloudfunctions.net/api"
+            ]
+        },
+        {
+            "name": "mobile (produção, release mode)",
+            "cwd": "apps/mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "toolArgs": [
+                "--dart-define=CHECKOUT_API_BASE_URL=https://us-central1-mediflow-learning.cloudfunctions.net/api"
+            ]
+        },
+        {
+            "name": "checkout_domain",
+            "cwd": "packages/checkout_domain",
+            "request": "launch",
+            "type": "dart"
+        }
+    ]
+}
